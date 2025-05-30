@@ -17,6 +17,9 @@ class BinaryUploader:
 
     def upload_binary(self, bv: BinaryView, options: dict):
         try:
+            log_info(f"Uploading binary {bv.file.filename} with options: {options}")
+            log_info(f"Options: {options}")
+            log_info(f"Binary size: {bv.file}")
             
             # TODO: Implement actual upload logic here
             # This will involve:

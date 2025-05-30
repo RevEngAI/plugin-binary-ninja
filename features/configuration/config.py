@@ -7,6 +7,7 @@ class Config:
         self.api_key = ""
         self.host = ""
         self.current_analysis = None
+        self.is_configured = None
         self._load_config()
         
 
@@ -28,33 +29,39 @@ class Config:
             "type" : "string",\
             "default" : "",\
             "description" : "Current Analysis ID"}')
+        settings.register_setting("revengai.is_configured", 
+            '{"title" : "Is Configured",\
+            "type" : "string",\
+            "default" : "False",\
+            "description" : "Configuration Status"}')
             
         self.host = settings.get_string("revengai.host", None)
         self.api_key = settings.get_string("revengai.api_key", None)
         self.current_analysis = settings.get_string("revengai.current_analysis", None)
+        self.is_configured = settings.get_string("revengai.is_configured", None)
 
         re_conf["apikey"] = self.api_key
         re_conf["host"] = self.host
         
 
     def save_config(self) -> bool:
-        log_info(f"Saving configuration: {self.host} {self.api_key[:4]}...")
-        if self.current_analysis:
-            settings.set_string("revengai.current_analysis", self.current_analysis)
-        
         try:
+            log_info(f"RevEng.AI | Testing configuration: {self.host} {self.api_key[:4]}...")
             re_conf["apikey"] = self.api_key
             re_conf["host"] = self.host
-            log_info(f"Saving configuration: {re_conf['apikey']} {re_conf['host']}")
             RE_authentication()
-            log_info(f"Authentication successful")
+            log_info("RevEng.AI | Authentication successful!")
+            self.is_configured = "True"
+
             settings = Settings()
             settings.set_string("revengai.host", self.host)
             settings.set_string("revengai.api_key", self.api_key)
+            settings.set_string("revengai.is_configured", self.is_configured)
+    
             return True
         
         except Exception as e:
-            log_info(f"Failed to save API key: {str(e)}")
+            log_info(f"RevEng.AI | Failed to save API key: {str(e)}")
             return False
         
         
@@ -62,8 +69,5 @@ class Config:
         self.api_key = ""
         self.host = ""
         self.current_analysis = None
+        self.is_configured = False
         self.save_config() 
-
-
-    def is_configured(self):
-        return bool(self.api_key and self.host) 

@@ -1,14 +1,39 @@
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
                                  QLineEdit, QPushButton, QMessageBox, QProgressDialog, QProgressBar)
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QPixmap
 from binaryninja import log_info, log_error, log_warn
 import os
 
-class ApiKeyWizard(QDialog):
+class ConfigSaveThread(QThread):
+    finished = Signal(bool, str)
+    
+    def __init__(self, config, api_key, host):
+        super().__init__()
+        self.config = config
+        self.api_key = api_key
+        self.host = host
+        
+    def run(self):
+        try:
+            self.config.api_key = self.api_key
+            self.config.host = self.host
+            success = self.config.save_config()
+            
+            if not success:
+                self.finished.emit(False, "API key not valid or host not reachable.")
+            else:
+                self.finished.emit(True, "")
+                
+        except Exception as e:
+            self.finished.emit(False, str(e))
+
+class ConfigDialog(QDialog):
     def __init__(self, config):
         super().__init__()
         self.config = config
+        self.save_thread = None
+        self.progress = None
         self.init_ui()
         
     def init_ui(self):
@@ -98,7 +123,7 @@ class ApiKeyWizard(QDialog):
         host = self.host_input.text().strip()
 
         if not api_key:
-            log_warn("API Key field is empty")
+            log_warn("RevEng.AI | API Key field is empty")
             QMessageBox.warning(
                 self, 
                 "RevEng.AI Configuration", 
@@ -108,7 +133,7 @@ class ApiKeyWizard(QDialog):
             return
             
         if not host:
-            log_warn("Host URL field is empty")
+            log_warn("RevEng.AI | Host URL field is empty")
             QMessageBox.warning(
                 self, 
                 "RevEng.AI Configuration", 
@@ -117,50 +142,41 @@ class ApiKeyWizard(QDialog):
             )
             return
             
-        try:
-            progress = QProgressDialog("Testing API key...", None, 0, 0, self)
-            progress.setWindowTitle("RevEng.AI Configuration")
-            progress.setWindowModality(Qt.WindowModal)
-            progress.setCancelButton(None)
-            progress.setMinimumWidth(400)
-            progress.setMinimumHeight(100)
-            progress.findChild(QProgressBar).setMinimumWidth(250)
-            progress.findChild(QProgressBar).setMinimumHeight(20)
-            progress.setStyleSheet("""
-                QProgressDialog {
-                    background-color: white;
-                    color: black;
-                }
-                QProgressBar {
-                    border: 1px solid #cccccc;
-                    border-radius: 4px;
-                    text-align: center;
-                    background-color: #f0f0f0;
-                    min-width: 250px;
-                    min-height: 20px;
-                }
-                QProgressBar::chunk {
-                    background-color: #007bff;
-                    border-radius: 3px;
-                }
-                QLabel {
-                    color: black;
-                    font-size: 13px;
-                    padding: 10px;
-                }
-            """)
-            progress.show()
-
-            self.config.api_key = api_key
-            self.config.host = host
-            key_try = self.config.save_config()
-            
-            progress.close()
-
-            if not key_try:
-                raise Exception("API key not valid or host not reachable.")
-            
-            log_info("RevEng.AI configuration saved successfully!")
+        # Create and show progress dialog
+        self.progress = QProgressDialog("Testing API key...", None, 0, 0, self)
+        self.progress.setWindowTitle("RevEng.AI Configuration")
+        self.progress.setWindowModality(Qt.WindowModal)
+        self.progress.setCancelButton(None)
+        self.progress.setMinimumWidth(400)
+        self.progress.setMinimumHeight(100)
+        self.progress.findChild(QProgressBar).setMinimumWidth(250)
+        self.progress.findChild(QProgressBar).setMinimumHeight(20)
+        self.progress.setStyleSheet("""
+            QProgressBar {
+                border: 1px solid #cccccc;
+                border-radius: 4px;
+                text-align: center;
+                background-color: #f0f0f0;
+                min-width: 250px;
+                min-height: 20px;
+            }
+            QProgressBar::chunk {
+                background-color: #007bff;
+                border-radius: 3px;
+            }
+        """)
+        
+        self.save_thread = ConfigSaveThread(self.config, api_key, host)
+        self.save_thread.finished.connect(self._on_save_finished)
+        self.save_thread.start()
+        
+        self.progress.show()
+        
+    def _on_save_finished(self, success, error_message):
+        self.progress.close()
+        
+        if success:
+            log_info("RevEng.AI | Configuration saved successfully!")
             QMessageBox.information(
                 self, 
                 "RevEng.AI Configuration",
@@ -168,12 +184,11 @@ class ApiKeyWizard(QDialog):
                 QMessageBox.Ok
             )
             self.accept()
-
-        except Exception as e:
-            log_error(f"Failed to save RevEng.AI configuration: {str(e)}")
+        else:
+            log_error(f"RevEng.AI | Failed to save configuration: {error_message}")
             QMessageBox.critical(
                 self, 
                 "RevEng.AI Configuration Error",
-                f"Failed to save configuration: {str(e)}",
+                f"Failed to save configuration: {error_message}",
                 QMessageBox.Ok
             ) 
