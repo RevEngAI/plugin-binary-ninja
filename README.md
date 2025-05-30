@@ -1,14 +1,6 @@
 # <img src="./images/logo.png" width=20> RevEng.AI Binary Ninja Plugin
 
-A Binary Ninja plugin for integrating with the RevEng.AI platform for binary analysis and function renaming.
-
-## Features
-
-- Upload binaries for analysis to RevEng.AI platform
-- Download and check analysis status
-- Rename functions based on similar functions found in other binaries
-- Batch analyze entire binaries for function renaming
-- Configuration management for API settings
+A Binary Ninja plugin for integrating with the RevEng.AI platform.
 
 ## Installation
 
