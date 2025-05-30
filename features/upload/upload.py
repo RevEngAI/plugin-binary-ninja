@@ -20,6 +20,7 @@ class BinaryUploader:
             log_info(f"Uploading binary {bv.file.filename} with options: {options}")
             log_info(f"Options: {options}")
             log_info(f"Binary size: {bv.file}")
+            self.config.save_config()
             
             # TODO: Implement actual upload logic here
             # This will involve:
