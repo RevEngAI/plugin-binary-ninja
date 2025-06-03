@@ -1,43 +1,10 @@
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
                               QComboBox, QPushButton, QRadioButton, QButtonGroup,
                               QLineEdit, QGroupBox, QFileDialog, QProgressDialog, QMessageBox)
-from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtCore import Qt
 from binaryninja import log_info, log_error, log_warn
-
-class ModelLoadThread(QThread):
-    finished = Signal(set)  # Signal emitting the loaded models
-    error = Signal(str)     # Signal for error handling
-    
-    def __init__(self, uploader):
-        super().__init__()
-        self.uploader = uploader
-        
-    def run(self):
-        try:
-            models = self.uploader.get_models()
-            self.finished.emit(models)
-        except Exception as e:
-            log_error(f"RevEng.AI | Failed to load models: {str(e)}")
-            self.error.emit(str(e))
-
-class UploadBinaryThread(QThread):
-    finished = Signal(bool, str)  # Signal for success/failure and error message
-    
-    def __init__(self, uploader, bv, options):
-        super().__init__()
-        self.uploader = uploader
-        self.bv = bv
-        self.options = options
-        
-    def run(self):
-        try:
-            success = self.uploader.upload_binary(self.bv, self.options)
-            if success:
-                self.finished.emit(True, "")
-            else:
-                self.finished.emit(False, "Failed to upload binary")
-        except Exception as e:
-            self.finished.emit(False, str(e))
+from .model_load_thread import ModelLoadThread
+from .upload_binary_thread import UploadBinaryThread
 
 class UploadDialog(QDialog):
     def __init__(self, config, uploader, bv):
@@ -125,10 +92,6 @@ class UploadDialog(QDialog):
         self.progress.setMinimumWidth(400)
         self.progress.setMinimumHeight(100)
         self.progress.setStyleSheet("""
-            QProgressDialog {
-                background-color: white;
-                color: black;
-            }
             QProgressBar {
                 border: 1px solid #cccccc;
                 border-radius: 4px;
@@ -141,14 +104,9 @@ class UploadDialog(QDialog):
                 background-color: #007bff;
                 border-radius: 3px;
             }
-            QLabel {
-                color: black;
-                font-size: 13px;
-                padding: 10px;
-            }
         """)
         
-        self.model_thread = ModelLoadThread(self.uploader)
+        self.model_thread = ModelLoadThread(self.uploader, self.bv)
         self.model_thread.finished.connect(self._on_models_loaded)
         self.model_thread.error.connect(self._on_model_load_error)
         self.model_thread.start()
@@ -159,7 +117,7 @@ class UploadDialog(QDialog):
         """Handle successful model loading"""
         self.progress.close()
         self.model_combo.clear()
-        for model in sorted(models):
+        for model in models:
             self.model_combo.addItem(model)
             
     def _on_model_load_error(self, error_msg):
@@ -194,10 +152,6 @@ class UploadDialog(QDialog):
         self.progress.setMinimumWidth(400)
         self.progress.setMinimumHeight(100)
         self.progress.setStyleSheet("""
-            QProgressDialog {
-                background-color: white;
-                color: black;
-            }
             QProgressBar {
                 border: 1px solid #cccccc;
                 border-radius: 4px;
@@ -209,11 +163,6 @@ class UploadDialog(QDialog):
             QProgressBar::chunk {
                 background-color: #007bff;
                 border-radius: 3px;
-            }
-            QLabel {
-                color: black;
-                font-size: 13px;
-                padding: 10px;
             }
         """)
         

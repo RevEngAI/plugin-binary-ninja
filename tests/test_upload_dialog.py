@@ -45,10 +45,10 @@ class TestUploadDialog(BaseTest):
         # Start the save thread
         dialog.save_thread = MagicMock()
         dialog.upload_binary()
-        
+            
         # Verify thread was started
         dialog.save_thread.start.assert_called_once()
-        
+            
     def test_upload_binary_validation(self):
         """Test binary upload validation"""
         dialog = UploadDialog(self.mock_config, self.mock_uploader, self.mock_bv)

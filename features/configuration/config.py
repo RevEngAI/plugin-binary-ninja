@@ -8,6 +8,8 @@ class Config:
         self.host = ""
         self.current_analysis = None
         self.is_configured = None
+        self.binary_id = None
+        self.analysis_id = None
         self._load_config()
         
 
@@ -34,11 +36,23 @@ class Config:
             "type" : "string",\
             "default" : "False",\
             "description" : "Configuration Status"}')
+        settings.register_setting("revengai.binary_id", 
+            '{"title" : "Binary ID",\
+            "type" : "string",\
+            "default" : "",\
+            "description" : "Current Binary ID"}')
+        settings.register_setting("revengai.analysis_id", 
+            '{"title" : "Analysis ID",\
+            "type" : "string",\
+            "default" : "",\
+            "description" : "Current Analysis ID"}')
             
         self.host = settings.get_string("revengai.host", None)
         self.api_key = settings.get_string("revengai.api_key", None)
         self.current_analysis = settings.get_string("revengai.current_analysis", None)
         self.is_configured = settings.get_string("revengai.is_configured", None)
+        self.binary_id = settings.get_integer("revengai.binary_id", None)
+        self.analysis_id = settings.get_integer("revengai.analysis_id", None)
 
         re_conf["apikey"] = self.api_key
         re_conf["host"] = self.host
@@ -71,3 +85,17 @@ class Config:
         self.current_analysis = None
         self.is_configured = False
         self.save_config() 
+
+    def set_binary_id(self, binary_id: str):
+        """Set the binary ID and store it in settings."""
+        self.binary_id = binary_id
+        settings = Settings()
+        settings.set_integer("revengai.binary_id", self.binary_id)
+        return
+
+    def set_analysis_id(self, analysis_id: str):
+        """Set the analysis ID and store it in settings."""
+        self.analysis_id = analysis_id
+        settings = Settings()
+        settings.set_integer("revengai.analysis_id", self.analysis_id)
+        return

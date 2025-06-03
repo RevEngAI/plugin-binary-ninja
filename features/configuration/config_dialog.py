@@ -1,32 +1,10 @@
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
                                  QLineEdit, QPushButton, QMessageBox, QProgressDialog, QProgressBar)
-from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
 from binaryninja import log_info, log_error, log_warn
 import os
-
-class ConfigSaveThread(QThread):
-    finished = Signal(bool, str)
-    
-    def __init__(self, config, api_key, host):
-        super().__init__()
-        self.config = config
-        self.api_key = api_key
-        self.host = host
-        
-    def run(self):
-        try:
-            self.config.api_key = self.api_key
-            self.config.host = self.host
-            success = self.config.save_config()
-            
-            if not success:
-                self.finished.emit(False, "API key not valid or host not reachable.")
-            else:
-                self.finished.emit(True, "")
-                
-        except Exception as e:
-            self.finished.emit(False, str(e))
+from .config_save_thread import ConfigSaveThread
 
 class ConfigDialog(QDialog):
     def __init__(self, config):
@@ -152,18 +130,18 @@ class ConfigDialog(QDialog):
         self.progress.findChild(QProgressBar).setMinimumWidth(250)
         self.progress.findChild(QProgressBar).setMinimumHeight(20)
         self.progress.setStyleSheet("""
-            QProgressBar {
-                border: 1px solid #cccccc;
-                border-radius: 4px;
-                text-align: center;
-                background-color: #f0f0f0;
-                min-width: 250px;
-                min-height: 20px;
-            }
-            QProgressBar::chunk {
-                background-color: #007bff;
-                border-radius: 3px;
-            }
+                QProgressBar {
+                    border: 1px solid #cccccc;
+                    border-radius: 4px;
+                    text-align: center;
+                    background-color: #f0f0f0;
+                    min-width: 250px;
+                    min-height: 20px;
+                }
+                QProgressBar::chunk {
+                    background-color: #007bff;
+                    border-radius: 3px;
+                }
         """)
         
         self.save_thread = ConfigSaveThread(self.config, api_key, host)
