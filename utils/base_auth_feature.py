@@ -10,4 +10,4 @@ class BaseAuthFeature(ABC):
         pass
 
     def is_valid(self, bv: BinaryView):
-        return self.config.is_configured == "True"
+        return self.config.is_configured == "True" 

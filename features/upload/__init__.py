@@ -1,7 +1,7 @@
 from binaryninja import PluginCommand, log_info, BinaryView
 from .upload import BinaryUploader
 from .upload_dialog import UploadDialog
-from ..base_auth_feature import BaseAuthFeature
+from revengai_bn.utils import BaseAuthFeature
 
 class UploadFeature(BaseAuthFeature):
     def __init__(self, config=None):

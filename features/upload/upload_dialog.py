@@ -1,10 +1,12 @@
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
                               QComboBox, QPushButton, QRadioButton, QButtonGroup,
-                              QLineEdit, QGroupBox, QFileDialog, QProgressDialog, QMessageBox)
-from PySide6.QtCore import Qt
+                              QLineEdit, QGroupBox, QFileDialog, QMessageBox)
+from PySide6.QtCore import Qt, QCoreApplication
 from binaryninja import log_info, log_error, log_warn
 from .model_load_thread import ModelLoadThread
 from .upload_binary_thread import UploadBinaryThread
+from revengai_bn.utils import create_progress_dialog
+import time
 
 class UploadDialog(QDialog):
     def __init__(self, config, uploader, bv):
@@ -15,9 +17,7 @@ class UploadDialog(QDialog):
         self.model_thread = None
         self.upload_thread = None
         self.progress = None
-        self.load_models()
         self.init_ui()
-        
         
     def init_ui(self):
         self.setWindowTitle("RevEng.AI: Process Binary")
@@ -81,37 +81,25 @@ class UploadDialog(QDialog):
         layout.addLayout(button_layout)
         
         self.setLayout(layout)
+        
+        # Show and process the dialog first
+        self.show()
+        QCoreApplication.processEvents()
+        
+        # Now start loading models
+        self.load_models()
 
     def load_models(self):
         """Start loading models in background"""
-        # Create and show progress dialog
-        self.progress = QProgressDialog("Loading available models...", None, 0, 0, self)
-        self.progress.setWindowTitle("RevEng.AI")
-        self.progress.setWindowModality(Qt.WindowModal)
-        self.progress.setCancelButton(None)
-        self.progress.setMinimumWidth(400)
-        self.progress.setMinimumHeight(100)
-        self.progress.setStyleSheet("""
-            QProgressBar {
-                border: 1px solid #cccccc;
-                border-radius: 4px;
-                text-align: center;
-                background-color: #f0f0f0;
-                min-width: 250px;
-                min-height: 20px;
-            }
-            QProgressBar::chunk {
-                background-color: #007bff;
-                border-radius: 3px;
-            }
-        """)
+        self.progress = create_progress_dialog(self, "RevEng.AI", "Loading available models...")
         
         self.model_thread = ModelLoadThread(self.uploader, self.bv)
         self.model_thread.finished.connect(self._on_models_loaded)
         self.model_thread.error.connect(self._on_model_load_error)
         self.model_thread.start()
-        
+
         self.progress.show()
+        QCoreApplication.processEvents()
         
     def _on_models_loaded(self, models):
         """Handle successful model loading"""
@@ -144,27 +132,8 @@ class UploadDialog(QDialog):
             )
             return
             
-        # Create and show progress dialog
-        self.progress = QProgressDialog("Uploading binary to RevEng.AI...", None, 0, 0, self)
-        self.progress.setWindowTitle("RevEng.AI Upload")
-        self.progress.setWindowModality(Qt.WindowModal)
-        self.progress.setCancelButton(None)
-        self.progress.setMinimumWidth(400)
-        self.progress.setMinimumHeight(100)
-        self.progress.setStyleSheet("""
-            QProgressBar {
-                border: 1px solid #cccccc;
-                border-radius: 4px;
-                text-align: center;
-                background-color: #f0f0f0;
-                min-width: 250px;
-                min-height: 20px;
-            }
-            QProgressBar::chunk {
-                background-color: #007bff;
-                border-radius: 3px;
-            }
-        """)
+        # Create and show progress dialog using utility function
+        self.progress = create_progress_dialog(self, "RevEng.AI Upload", "Uploading binary to RevEng.AI...")
         
         # Create and start upload thread
         self.upload_thread = UploadBinaryThread(self.uploader, self.bv, self.get_upload_options())
@@ -172,6 +141,7 @@ class UploadDialog(QDialog):
         self.upload_thread.start()
         
         self.progress.show()
+        QCoreApplication.processEvents()
         
     def _on_upload_finished(self, success, error_message):
         """Handle upload completion"""

@@ -1,5 +1,6 @@
 from binaryninja import BinaryView, log_info, log_error, log_debug, SymbolType, BinaryViewType
 from reait.api import RE_models, RE_upload, RE_analysis_lookup, RE_analyse
+from revengai_bn.utils import PeriodicChecker
 import json
 
 class BinaryUploader:
@@ -45,7 +46,12 @@ class BinaryUploader:
 
     def upload_binary(self, bv: BinaryView, options: dict):
         try:
+
             log_info(f"RevEng.AI | Uploading binary {bv.file.filename}.")
+            log_info(f"RevEng.AI | File size: {bv.parent_view.length} bytes")
+            if bv.parent_view.length > 10 * 1024 ** 2:
+                log_error(f"RevEng.AI | File size is too large. Please upload a file smaller than 10MB.")
+                return False
 
             upload = RE_upload(bv.file.filename).json()   
 
@@ -57,47 +63,46 @@ class BinaryUploader:
 
             sha_256_hash = upload["sha_256_hash"]
             log_info(f"RevEng.AI | SHA-256 hash: {sha_256_hash}")
-            
-            # Convert symbols to a list of dictionaries with hex strings
-            symbols = []
-            log_info(f"RevEng.AI | Image Base: {bv.image_base:x}")
-            for key, value in bv.symbols.items():
-                if value[0].type == SymbolType.FunctionSymbol:
-                    func = bv.get_function_at(value[0].address)
-                    symbols.append({
-                        "name": func.name,
-                        "start": func.start,
-                        "end": func.start + func.total_bytes,
-                    })
-                    log_info(f"RevEng.AI | Name: {key} | Start: {func.start:x} | End: {func.start + func.total_bytes:x} | Size: {func.total_bytes}")
 
-            # Log all analysis parameters
-            log_info("RevEng.AI | Analysis parameters:")
-            log_info(f"RevEng.AI | - File path: {bv.file.filename}")
-            log_info(f"RevEng.AI | - Binary scope: {'PRIVATE' if options['is_private'] else 'PUBLIC'}")
-            log_info(f"RevEng.AI | - Debug info path: {options.get('debug_info', None)}")
-            log_info(f"RevEng.AI | - Model name: {options['model']}")
-            log_info(f"RevEng.AI | - Tags: {options.get('tags', [])}")
-            log_info(f"RevEng.AI | - Number of symbols: {len(symbols)}")
-                
+            symbols = {
+                "base_addr": bv.image_base, 
+                "functions": []
+            }
+
+            for func in bv.functions:
+                symbols["functions"].append({
+                        "name": func.name,
+                        "start_addr": func.start,
+                        "end_addr": func.start + func.total_bytes,
+                })
+            
             analysis = RE_analyse(
                 fpath=bv.file.filename,
                 binary_scope= "PRIVATE" if options["is_private"] else "PUBLIC",
                 model_name=options["model"],
                 tags=options["tags"],
-                symbols=symbols
+                debug_fpath=options["debug_info"],
+                symbols=symbols,
+                skip_scraping=True,
+                skip_sbom=True,
+                skip_capabilities=True,
+                advanced_analysis=False
             ).json()
 
             log_info(f"RevEng.AI | Analysis response: {analysis}")
 
-            binary_id = analysis["binary_id"]
-            analysis_info = RE_analysis_lookup(str(binary_id)).json()
+            analysis_info = RE_analysis_lookup(str(analysis["binary_id"])).json()
                 
-            log_info(f"RevEng.AI | Analysis info: {analysis_info}")
+            log_info(f"RevEng.AI | Binary ID: {analysis['binary_id']}")
+            log_info(f"RevEng.AI | Analysis ID: {analysis_info['analysis_id']}")
             
-            self.config.set_binary_id(binary_id)
+            self.config.set_binary_id(analysis["binary_id"])
             self.config.set_analysis_id(analysis_info["analysis_id"])
-                
+
+            # Start periodic status checking
+            checker = PeriodicChecker()
+            checker.start_checking(bv, analysis["binary_id"])
+
             return True
             
         except Exception as e:

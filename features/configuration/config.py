@@ -38,13 +38,13 @@ class Config:
             "description" : "Configuration Status"}')
         settings.register_setting("revengai.binary_id", 
             '{"title" : "Binary ID",\
-            "type" : "string",\
-            "default" : "",\
+            "type" : "number",\
+            "default" : 0,\
             "description" : "Current Binary ID"}')
         settings.register_setting("revengai.analysis_id", 
             '{"title" : "Analysis ID",\
-            "type" : "string",\
-            "default" : "",\
+            "type" : "number",\
+            "default" : 0,\
             "description" : "Current Analysis ID"}')
             
         self.host = settings.get_string("revengai.host", None)
@@ -71,11 +71,14 @@ class Config:
             settings.set_string("revengai.host", self.host)
             settings.set_string("revengai.api_key", self.api_key)
             settings.set_string("revengai.is_configured", self.is_configured)
-    
+
             return True
         
         except Exception as e:
             log_info(f"RevEng.AI | Failed to save API key: {str(e)}")
+            self.is_configured = "False"
+            settings = Settings()
+            settings.set_string("revengai.is_configured", self.is_configured)
             return False
         
         
@@ -86,14 +89,14 @@ class Config:
         self.is_configured = False
         self.save_config() 
 
-    def set_binary_id(self, binary_id: str):
+    def set_binary_id(self, binary_id: int):
         """Set the binary ID and store it in settings."""
         self.binary_id = binary_id
         settings = Settings()
         settings.set_integer("revengai.binary_id", self.binary_id)
         return
 
-    def set_analysis_id(self, analysis_id: str):
+    def set_analysis_id(self, analysis_id: int):
         """Set the analysis ID and store it in settings."""
         self.analysis_id = analysis_id
         settings = Settings()

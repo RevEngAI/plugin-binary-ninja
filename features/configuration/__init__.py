@@ -1,7 +1,7 @@
 from binaryninja import PluginCommand, log_info
 from .config import Config
 from .config_dialog import ConfigDialog
-from ..base_auth_feature import BaseAuthFeature
+from revengai_bn.utils import BaseAuthFeature
 
 class ConfigurationFeature():
     def __init__(self):

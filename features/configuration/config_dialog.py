@@ -1,10 +1,11 @@
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
-                                 QLineEdit, QPushButton, QMessageBox, QProgressDialog, QProgressBar)
+                                 QLineEdit, QPushButton, QMessageBox)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
 from binaryninja import log_info, log_error, log_warn
 import os
 from .config_save_thread import ConfigSaveThread
+from revengai_bn.utils import create_progress_dialog
 
 class ConfigDialog(QDialog):
     def __init__(self, config):
@@ -13,6 +14,7 @@ class ConfigDialog(QDialog):
         self.save_thread = None
         self.progress = None
         self.init_ui()
+        
         
     def init_ui(self):
         self.setWindowTitle("RevEng.AI Configuration Wizard")
@@ -95,6 +97,7 @@ class ConfigDialog(QDialog):
         layout.addLayout(button_layout)
         
         self.setLayout(layout)
+
         
     def save_config(self):
         api_key = self.api_key_input.text().strip()
@@ -119,36 +122,15 @@ class ConfigDialog(QDialog):
                 QMessageBox.Ok
             )
             return
-            
-        # Create and show progress dialog
-        self.progress = QProgressDialog("Testing API key...", None, 0, 0, self)
-        self.progress.setWindowTitle("RevEng.AI Configuration")
-        self.progress.setWindowModality(Qt.WindowModal)
-        self.progress.setCancelButton(None)
-        self.progress.setMinimumWidth(400)
-        self.progress.setMinimumHeight(100)
-        self.progress.findChild(QProgressBar).setMinimumWidth(250)
-        self.progress.findChild(QProgressBar).setMinimumHeight(20)
-        self.progress.setStyleSheet("""
-                QProgressBar {
-                    border: 1px solid #cccccc;
-                    border-radius: 4px;
-                    text-align: center;
-                    background-color: #f0f0f0;
-                    min-width: 250px;
-                    min-height: 20px;
-                }
-                QProgressBar::chunk {
-                    background-color: #007bff;
-                    border-radius: 3px;
-                }
-        """)
+
+        self.progress = create_progress_dialog(self, "RevEng.AI Configuration", "Testing API key...")
         
         self.save_thread = ConfigSaveThread(self.config, api_key, host)
         self.save_thread.finished.connect(self._on_save_finished)
         self.save_thread.start()
         
         self.progress.show()
+
         
     def _on_save_finished(self, success, error_message):
         self.progress.close()
