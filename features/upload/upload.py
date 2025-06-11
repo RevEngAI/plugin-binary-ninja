@@ -1,7 +1,6 @@
 from binaryninja import BinaryView, log_info, log_error, log_debug, SymbolType, BinaryViewType
 from reait.api import RE_models, RE_upload, RE_analysis_lookup, RE_analyse
 from revengai_bn.utils import PeriodicChecker
-import json
 
 class BinaryUploader:
     def __init__(self, config):
@@ -99,9 +98,7 @@ class BinaryUploader:
             self.config.set_binary_id(analysis["binary_id"])
             self.config.set_analysis_id(analysis_info["analysis_id"])
 
-            # Start periodic status checking
-            checker = PeriodicChecker()
-            checker.start_checking(bv, analysis["binary_id"])
+            PeriodicChecker().start_checking(bv, analysis["binary_id"])
 
             return True
             

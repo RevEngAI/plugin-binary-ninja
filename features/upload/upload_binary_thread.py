@@ -1,7 +1,7 @@
 from PySide6.QtCore import QThread, Signal
 
 class UploadBinaryThread(QThread):
-    finished = Signal(bool, str)  # Signal for success/failure and error message
+    finished = Signal(bool, str) 
     
     def __init__(self, uploader, bv, options):
         super().__init__()
@@ -11,10 +11,10 @@ class UploadBinaryThread(QThread):
         
     def run(self):
         try:
-            success = self.uploader.upload_binary(self.bv, self.options)
+            success = self.uploader.upload_binary(self.bv, self.options) # Change to return error message
             if success:
                 self.finished.emit(True, "")
             else:
-                self.finished.emit(False, "Duplicate binary or host not reachable.")
+                self.finished.emit(False, "")
         except Exception as e:
             self.finished.emit(False, str(e)) 

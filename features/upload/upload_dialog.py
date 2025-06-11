@@ -6,7 +6,6 @@ from binaryninja import log_info, log_error, log_warn
 from .model_load_thread import ModelLoadThread
 from .upload_binary_thread import UploadBinaryThread
 from revengai_bn.utils import create_progress_dialog
-import time
 
 class UploadDialog(QDialog):
     def __init__(self, config, uploader, bv):
@@ -82,15 +81,13 @@ class UploadDialog(QDialog):
         
         self.setLayout(layout)
         
-        # Show and process the dialog first
         self.show()
         QCoreApplication.processEvents()
         
-        # Now start loading models
         self.load_models()
 
+
     def load_models(self):
-        """Start loading models in background"""
         self.progress = create_progress_dialog(self, "RevEng.AI", "Loading available models...")
         
         self.model_thread = ModelLoadThread(self.uploader, self.bv)
@@ -102,14 +99,12 @@ class UploadDialog(QDialog):
         QCoreApplication.processEvents()
         
     def _on_models_loaded(self, models):
-        """Handle successful model loading"""
         self.progress.close()
         self.model_combo.clear()
         for model in models:
             self.model_combo.addItem(model)
             
     def _on_model_load_error(self, error_msg):
-        """Handle model loading error"""
         self.progress.close()
         log_error(f"RevEng.AI | Failed to load models: {error_msg}")
         QMessageBox.critical(
@@ -120,8 +115,6 @@ class UploadDialog(QDialog):
         )
 
     def upload_binary(self):
-        """Start binary upload process"""
-        # Validate model selection
         if not self.model_combo.currentText():
             log_warn("RevEng.AI | Model selection is required")
             QMessageBox.warning(
@@ -132,10 +125,8 @@ class UploadDialog(QDialog):
             )
             return
             
-        # Create and show progress dialog using utility function
         self.progress = create_progress_dialog(self, "RevEng.AI Upload", "Uploading binary to RevEng.AI...")
         
-        # Create and start upload thread
         self.upload_thread = UploadBinaryThread(self.uploader, self.bv, self.get_upload_options())
         self.upload_thread.finished.connect(self._on_upload_finished)
         self.upload_thread.start()
@@ -144,7 +135,6 @@ class UploadDialog(QDialog):
         QCoreApplication.processEvents()
         
     def _on_upload_finished(self, success, error_message):
-        """Handle upload completion"""
         self.progress.close()
         
         if success:

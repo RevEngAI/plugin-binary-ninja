@@ -2,8 +2,8 @@ from PySide6.QtCore import QThread, Signal
 from binaryninja import log_error
 
 class ModelLoadThread(QThread):
-    finished = Signal(list)  # Signal emitting the loaded models
-    error = Signal(str)     # Signal for error handling
+    finished = Signal(list) 
+    error = Signal(str)
     
     def __init__(self, uploader, bv):
         super().__init__()

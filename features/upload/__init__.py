@@ -18,7 +18,7 @@ class UploadFeature(BaseAuthFeature):
         )
         log_info("RevEng.AI | Process Feature registered")
 
-    def show_upload_dialog(self, bv):
+    def show_upload_dialog(self, bv: BinaryView):
         log_info("RevEng.AI | Opening process dialog")
         dialog = UploadDialog(self.config, self.uploader, bv)
         dialog.exec()

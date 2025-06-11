@@ -8,8 +8,8 @@ class Config:
         self.host = ""
         self.current_analysis = None
         self.is_configured = None
-        self.binary_id = None
-        self.analysis_id = None
+        self.binary_id = 0
+        self.analysis_id = 0
         self._load_config()
         
 
@@ -36,23 +36,11 @@ class Config:
             "type" : "string",\
             "default" : "False",\
             "description" : "Configuration Status"}')
-        settings.register_setting("revengai.binary_id", 
-            '{"title" : "Binary ID",\
-            "type" : "number",\
-            "default" : 0,\
-            "description" : "Current Binary ID"}')
-        settings.register_setting("revengai.analysis_id", 
-            '{"title" : "Analysis ID",\
-            "type" : "number",\
-            "default" : 0,\
-            "description" : "Current Analysis ID"}')
             
         self.host = settings.get_string("revengai.host", None)
         self.api_key = settings.get_string("revengai.api_key", None)
         self.current_analysis = settings.get_string("revengai.current_analysis", None)
         self.is_configured = settings.get_string("revengai.is_configured", None)
-        self.binary_id = settings.get_integer("revengai.binary_id", None)
-        self.analysis_id = settings.get_integer("revengai.analysis_id", None)
 
         re_conf["apikey"] = self.api_key
         re_conf["host"] = self.host
@@ -102,3 +90,24 @@ class Config:
         settings = Settings()
         settings.set_integer("revengai.analysis_id", self.analysis_id)
         return
+    
+    def init_config(self):
+        try:
+            log_info(f"RevEng.AI | Testing configuration: {self.host} {self.api_key[:4]}...")
+            re_conf["apikey"] = self.api_key
+            re_conf["host"] = self.host
+            RE_authentication()
+            log_info("RevEng.AI | Authentication successful!")
+
+            self.is_configured = "True"
+            settings = Settings()
+            settings.set_string("revengai.is_configured", self.is_configured)
+            return True
+
+        except Exception as e:
+            log_info(f"RevEng.AI | Failed to initialize configuration: {str(e)}")
+            self.is_configured = "False"
+            settings = Settings()
+            settings.set_string("revengai.is_configured", self.is_configured)
+            return False
+        
