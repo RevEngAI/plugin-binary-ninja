@@ -4,7 +4,7 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
 from PySide6.QtCore import Qt, QCoreApplication
 from binaryninja import log_info, log_error, log_warn
 from .model_load_thread import ModelLoadThread
-from .upload_binary_thread import UploadBinaryThread
+from .upload_thread import UploadBinaryThread
 from revengai_bn.utils import create_progress_dialog
 
 class UploadDialog(QDialog):
@@ -113,6 +113,7 @@ class UploadDialog(QDialog):
             f"Failed to load available models: {error_msg}",
             QMessageBox.Ok
         )
+        self.reject()  
 
     def upload_binary(self):
         if not self.model_combo.currentText():

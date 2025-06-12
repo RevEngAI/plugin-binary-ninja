@@ -1,5 +1,5 @@
-from binaryninja import Settings, log_info
-from reait.api import re_conf, RE_authentication
+from binaryninja import Settings, log_info, log_error, BinaryView
+from reait.api import re_conf, RE_authentication, RE_search
 
 class Config:
     def __init__(self):
@@ -90,9 +90,10 @@ class Config:
         settings = Settings()
         settings.set_integer("revengai.analysis_id", self.analysis_id)
         return
-    
-    def init_config(self):
+
+    def init_config(self, bv: BinaryView):
         try:
+            """
             log_info(f"RevEng.AI | Testing configuration: {self.host} {self.api_key[:4]}...")
             re_conf["apikey"] = self.api_key
             re_conf["host"] = self.host
@@ -102,12 +103,20 @@ class Config:
             self.is_configured = "True"
             settings = Settings()
             settings.set_string("revengai.is_configured", self.is_configured)
-            return True
+            """
+            # TODO: Ignore search if binary appears in settings options
+            search_results = RE_search(fpath=bv.file.filename).json()["query_results"]
+            if not len(search_results):
+                raise Exception("Binary not found in RevEng.AI, try processing the binary again.")
+
+            return True, ""
 
         except Exception as e:
-            log_info(f"RevEng.AI | Failed to initialize configuration: {str(e)}")
+            log_error(f"RevEng.AI | Failed to initialize configuration: {str(e)}")
+            """
             self.is_configured = "False"
             settings = Settings()
             settings.set_string("revengai.is_configured", self.is_configured)
-            return False
+            """
+            return False, str(e)
         

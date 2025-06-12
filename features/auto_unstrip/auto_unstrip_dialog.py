@@ -8,14 +8,14 @@ from PySide6.QtGui import QPixmap, QIcon
 from PySide6.QtCore import QCoreApplication
 from PySide6.QtWidgets import QMessageBox
 from revengai_bn.utils import create_progress_dialog
-from .autounstrip_thread import AutoUnstripThread
+from .auto_unstrip_thread import AutoUnstripThread
 import os
 
 class AutoUnstripDialog(QDialog):
-    def __init__(self, config, autounstrip, bv):
+    def __init__(self, config, auto_unstrip, bv):
         super().__init__()
         self.config = config
-        self.autounstrip = autounstrip
+        self.auto_unstrip = auto_unstrip
         self.bv = bv
         self.init_ui()
 
@@ -52,7 +52,7 @@ class AutoUnstripDialog(QDialog):
                 background-color: #4400ff;
             }
         """)
-        self.save_button.clicked.connect(self.auto_unstrip)
+        self.save_button.clicked.connect(self._auto_unstrip)
         self.cancel_button = QPushButton("Cancel")
         self.cancel_button.setStyleSheet("""
             QPushButton {
@@ -68,13 +68,13 @@ class AutoUnstripDialog(QDialog):
 
         self.setLayout(layout)
 
-    def auto_unstrip(self):
+    def _auto_unstrip(self):
         log_info("RevEng.AI | Auto Unstripping binary")
         # Create and show progress dialog using utility function
         self.progress = create_progress_dialog(self, "RevEng.AI Auto Unstrip", "Auto Unstripping binary...")
         
         # Create and start upload thread
-        self.auto_unstrip_thread = AutoUnstripThread(self.autounstrip, self.bv)
+        self.auto_unstrip_thread = AutoUnstripThread(self.auto_unstrip, self.bv)
         self.auto_unstrip_thread.finished.connect(self._on_auto_unstrip_finished)
         self.auto_unstrip_thread.start()
         

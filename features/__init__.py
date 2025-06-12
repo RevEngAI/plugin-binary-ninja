@@ -1,5 +1,6 @@
 from .configuration import ConfigurationFeature
 from .upload import UploadFeature
-from .autounstrip import AutoUnstripFeature
+from .auto_unstrip import AutoUnstripFeature
+from .choose_source import ChooseSourceFeature
 
-__all__ = ['ConfigurationFeature', 'UploadFeature', 'AutoUnstripFeature'] 
+__all__ = ['ConfigurationFeature', 'UploadFeature', 'AutoUnstripFeature', 'ChooseSourceFeature'] 

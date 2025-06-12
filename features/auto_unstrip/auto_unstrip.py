@@ -10,19 +10,7 @@ class AutoUnstrip:
         self.auto_unstrip_distance = 0.09999999999999998
         self.base_addr = None
         self.path = None
-        self._analysed_functions = {}
-        self._functions = []
-        self.function_ids = []
-        self.max_workers = 4  # Number of parallel threads
-
-    def _get_all_functions(self):
-        return list(self.bv.functions)
-
-    def _get_analysed_functions(self):
-        return self._analysed_functions
-
-    def _get_sync_analysed_ids_local(self):
-        return self.function_ids
+        self.max_workers = 4 
 
     def _rename_function(self, bv: BinaryView, addr: int, new_name: str, new_name_mangled: str) -> bool:
         try:
@@ -38,7 +26,7 @@ class AutoUnstrip:
             new_symbol = Symbol(SymbolType.FunctionSymbol, addr, new_name_mangled)
             bv.define_user_symbol(new_symbol)
             
-            log_info(f"RevEng.AI | Renamed function at {hex(addr)} to {new_name}")
+            log_info(f"RevEng.AI | Renamed function at {hex(addr)} to {new_name_mangled}")
             return True
 
         except Exception as e:
@@ -90,7 +78,6 @@ class AutoUnstrip:
             self.path = bv.file.filename
             log_info(f"RevEng.AI | Path: {self.path}")
             log_info(f"RevEng.AI | Binary ID: {self.config.binary_id}")
-            self._analysed_functions = {}
 
             results = RE_search(fpath=self.path).json()["query_results"]
             log_info(f"RevEng.AI | Search Results: {results}")
@@ -106,23 +93,19 @@ class AutoUnstrip:
                 for func in analyzed_functions
             }
 
-            # Use fixed chunk size of 50
             chunk_size = 50
             chunks = [function_ids[i:i + chunk_size] for i in range(0, len(function_ids), chunk_size)]
             
             log_info(f"RevEng.AI | Processing {len(function_ids)} functions in {len(chunks)} chunks of size {chunk_size}")
 
-            # Process chunks in parallel
             total_renamed = 0
             all_errors = []
             with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-                # Submit all tasks
                 future_to_chunk = {
                     executor.submit(self._process_batch, chunk, id_to_addr, bv): i 
                     for i, chunk in enumerate(chunks)
                 }
 
-                # Wait for all tasks to complete and collect results
                 for future in as_completed(future_to_chunk):
                     chunk_index = future_to_chunk[future]
                     try:
@@ -147,11 +130,3 @@ class AutoUnstrip:
         except Exception as e:
             log_error(f"RevEng.AI | Error: {str(e)}")
             return False, str(e)
-            """
-            self._functions = self._get_all_functions()
-            self._get_analysed_functions()
-            self.function_ids = self._get_sync_analysed_ids_local()
-
-            log_info(f"RevEng.AI | {bv.file.original_filename}")
-            """
-
