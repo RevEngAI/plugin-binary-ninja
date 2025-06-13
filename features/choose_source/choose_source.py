@@ -12,9 +12,11 @@ class ChooseSource:
         try:
             log_info(f"RevEng.AI | Chose: {chose}")
             binary_id = chose.split("ID: ")[1].split(" -")[0]
-            self.config.binary_id = binary_id
             log_info(f"RevEng.AI | Binary ID: {self.config.binary_id}")
             # TODO: implement array like to store binary id and binaryhash and filesize
+
+            self.config.set_current_info(binary_id)
+
             return True
         except Exception as e:
             log_error(f"RevEng.AI | Failed to choose source: {str(e)}")
@@ -22,12 +24,12 @@ class ChooseSource:
 
     def get_analysis(self, bv: BinaryView):
         try:
-            self.base_addr = bv.image_base
-            self.path = bv.file.filename
-            log_info(f"RevEng.AI | Path: {self.path}")
+            log_info(f"RevEng.AI | Path: {bv.file.filename}")
             log_info(f"RevEng.AI | Binary ID: {self.config.binary_id}")
 
-            results = RE_search(fpath=self.path).json()["query_results"]
+            # TODO: check if the binary is already in the database
+
+            results = RE_search(fpath=bv.file.filename).json()["query_results"]
 
             if not len(results):
                 raise Exception("Binary not found in RevEng.AI, try processing the binary again.")

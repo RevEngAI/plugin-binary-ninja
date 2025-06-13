@@ -23,10 +23,10 @@ class AutoUnstrip:
                 log_info(f"RevEng.AI | Function at {hex(addr)} already has name {func.name}")
                 return False
             
-            new_symbol = Symbol(SymbolType.FunctionSymbol, addr, new_name_mangled)
+            new_symbol = Symbol(SymbolType.FunctionSymbol, addr, new_name)
             bv.define_user_symbol(new_symbol)
             
-            log_info(f"RevEng.AI | Renamed function at {hex(addr)} to {new_name_mangled}")
+            log_info(f"RevEng.AI | Renamed function at {hex(addr)} to {new_name}")
             return True
 
         except Exception as e:

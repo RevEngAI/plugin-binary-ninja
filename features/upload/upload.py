@@ -95,8 +95,7 @@ class BinaryUploader:
             log_info(f"RevEng.AI | Binary ID: {analysis['binary_id']}")
             log_info(f"RevEng.AI | Analysis ID: {analysis_info['analysis_id']}")
             
-            self.config.set_binary_id(analysis["binary_id"])
-            self.config.set_analysis_id(analysis_info["analysis_id"])
+            # TODO: Set binary and analysis id in config in form of id in array in settings
 
             PeriodicChecker().start_checking(bv, analysis["binary_id"])
 

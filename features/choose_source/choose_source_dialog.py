@@ -63,7 +63,7 @@ class ChooseSourceDialog(QDialog):
                 background-color: #4400ff;
             }
         """)
-        self.ok_button.clicked.connect(self.choose_source)
+        self.ok_button.clicked.connect(self._choose_source)
         self.cancel_button = QPushButton("Cancel")
         self.cancel_button.setStyleSheet("""
             QPushButton {
@@ -110,7 +110,7 @@ class ChooseSourceDialog(QDialog):
         )
         self.reject()   
 
-    def choose_source(self):
+    def _choose_source(self):
         if not self.combo.currentText():
             log_warn("RevEng.AI | Source selection is required")
             QMessageBox.warning(
