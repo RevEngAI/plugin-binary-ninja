@@ -1,5 +1,5 @@
 from binaryninja import BinaryView, log_info, log_error, Symbol, SymbolType
-from reait.api import RE_authentication, RE_search, RE_nearest_symbols_batch, RE_analyze_functions
+from reait.api import RE_authentication, RE_search, RE_nearest_symbols_batch, RE_analyze_functions, RE_name_score
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Dict, Tuple
 import math
@@ -36,22 +36,28 @@ class AutoUnstrip:
     def _process_batch(self, function_ids: List[int], id_to_addr: Dict[int, int], bv: BinaryView) -> Tuple[int, List[str]]:
         """Process a batch of function IDs and return the number of renamed functions"""
         try:
-            ret = RE_nearest_symbols_batch(
+            functions_by_distance = RE_nearest_symbols_batch(
                 function_ids=function_ids,
                 distance=self.auto_unstrip_distance,
                 debug_enabled=True,
                 nns=1
             ).json()["function_matches"]
 
+            functions = []
+            for function in functions_by_distance:
+                functions.append({"function_id": function['origin_function_id'], "function_name": function['nearest_neighbor_function_name']})
+            log_info(f"RevEng.AI | Functions by distance: {functions}")
+            functions_by_score = RE_name_score(functions).json()["data"]
+            log_info(f"RevEng.AI | Functions by score: {functions_by_score}")
             renamed_count = 0
             errors = []
-            for result in ret:
+            for result in functions_by_distance:
                 try:
                     func_id = result['origin_function_id']
                     func_addr = id_to_addr.get(func_id)
                     if not func_addr:
                         continue
-                        
+
                     new_name = result['nearest_neighbor_function_name']
                     if not new_name or new_name.startswith(("sub_", "FUN_")):
                         continue
@@ -60,8 +66,18 @@ class AutoUnstrip:
                     if not new_name_mangled or new_name_mangled.startswith(("sub_", "FUN_")):
                         continue
                     
-                    if self._rename_function(bv, func_addr, new_name, new_name_mangled):
-                        renamed_count += 1
+                    for function in functions_by_score:
+                        if function['function_id'] == func_id:
+                           if function['box_plot']["average"] < 0.9:
+                                log_info(f"RevEng.AI | Function {function['function_id']} has a score of {function['box_plot']["average"]:.2f} for name {function['function_name']}, skipping")
+                                break
+                           else:
+                                log_info(f"RevEng.AI | Function {function['function_id']} has a score of {function['box_plot']["average"]:.2f} for name {function['function_name']}, renaming")
+                                if self._rename_function(bv, func_addr, new_name, new_name_mangled):
+                                    renamed_count += 1
+                                break
+                    
+
                 except Exception as e:
                     errors.append(str(e))
 
@@ -76,8 +92,9 @@ class AutoUnstrip:
 
             self.base_addr = bv.image_base
             self.path = bv.file.filename
+            binary_id = self.config.get_binary_id(bv)
             log_info(f"RevEng.AI | Path: {self.path}")
-            log_info(f"RevEng.AI | Binary ID: {self.config.binary_id}")
+            log_info(f"RevEng.AI | Binary ID: {binary_id}")
 
             results = RE_search(fpath=self.path).json()["query_results"]
             log_info(f"RevEng.AI | Search Results: {results}")
@@ -85,7 +102,7 @@ class AutoUnstrip:
             if not len(results):
                 raise Exception("Binary not found in RevEng.AI, try uploading again.")
             
-            analyzed_functions = RE_analyze_functions(self.path, self.config.binary_id).json()["functions"]
+            analyzed_functions = RE_analyze_functions(self.path, binary_id).json()["functions"]
             function_ids = [func["function_id"] for func in analyzed_functions]
 
             id_to_addr = {

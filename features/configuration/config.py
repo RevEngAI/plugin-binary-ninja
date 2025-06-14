@@ -9,8 +9,6 @@ class Config:
         self.host = ""
         self.sha256 = ""
         self.is_configured = False
-        self.binary_id = 0
-        self.analysis_id = 0
         self._load_config()
         
 
@@ -46,7 +44,7 @@ class Config:
             log_info(f"RevEng.AI | Testing configuration: {self.host} {self.api_key[:4]}...")
             
             if not self.check_auth():
-                raise(f"RevEng.AI | Authentication failed.")
+                raise Exception(f"RevEng.AI | Authentication failed.")
             
             self.is_configured = True
 
@@ -83,7 +81,7 @@ class Config:
         all_analyses = settings.get_json("revengai.all_analyses", None)
         if all_analyses == "null":
             return {}
-        return all_analyses
+        return json.loads(all_analyses)
     
     def set_current_info(self, binary_id):
         binary_id = int(binary_id)
@@ -91,26 +89,26 @@ class Config:
 
         all_analyses = self.get_all_analyses()
         all_analyses[self.sha256] = {"binary_id": binary_id}
-        log_info(f"RevEng.AI | All analyses: {all_analyses}")
+        #log_info(f"RevEng.AI | All analyses: {all_analyses}")
         settings = Settings()
         
         settings.set_json("revengai.all_analyses", json.dumps(all_analyses))
         log_info(f"RevEng.AI | Updated analysis for SHA256: {self.sha256[:8]}... with binary_id: {binary_id}")
 
-
     def init_config(self, bv: BinaryView):
         try:
             if not self.check_auth():
                 self.is_configured = False
-                raise(f"RevEng.AI | Authentication failed.")
+                raise Exception("RevEng.AI | Authentication failed.")
             
             self.is_configured = True
 
             self.sha256 = re_binary_id(bv.file.filename)
             log_info(f"RevEng.AI | SHA256: {self.sha256}")
 
-            all_analyses = self.get_all_analyses()  
+            all_analyses = self.get_all_analyses()
             if self.sha256 in all_analyses:
+                log_info(f"RevEng.AI | Binary found in saved configurations, binary_id: {all_analyses[self.sha256]['binary_id']}")
                 self.binary_id = all_analyses[self.sha256]["binary_id"]
             else:
                 search_results = RE_search(fpath=bv.file.filename).json()["query_results"]
@@ -123,3 +121,10 @@ class Config:
             log_error(f"RevEng.AI | Failed to initialize configuration: {str(e)}")
             return False, str(e)
         
+    def get_binary_id(self, bv: BinaryView):
+        self.sha256 = re_binary_id(bv.file.filename)
+        all_analyses = self.get_all_analyses()
+        if self.sha256 in all_analyses:
+            return all_analyses[self.sha256]["binary_id"]
+        else:
+            return 0
