@@ -3,11 +3,12 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton,
                              QLabel, QLineEdit, QTableWidget, QTableWidgetItem,
                              QHeaderView, QTabWidget, QWidget, QMessageBox,
                              QCheckBox, QDoubleSpinBox, QSpinBox, QGroupBox,
-                             QSplitter, QTextEdit, QProgressBar)
-from PySide6.QtCore import Qt, QTimer
+                             QSplitter, QTextEdit, QProgressBar, QSlider)
+from PySide6.QtCore import Qt, QTimer, QCoreApplication
 from PySide6.QtGui import QIcon
 from revengai_bn.utils import create_progress_dialog
 from .match_functions_thread import MatchFunctionsThread
+from .search_collections_thread import SearchCollectionsThread
 import os
 
 class MatchFunctionsDialog(QDialog):
@@ -53,14 +54,21 @@ class MatchFunctionsDialog(QDialog):
         layout = QVBoxLayout()
 
         # Search section
-        search_group = QGroupBox("Search Collections")
+        #search_group = QGroupBox("Search Collections")
+        search_group = QGroupBox()
         search_layout = QVBoxLayout()
         
         # Search input
         search_input_layout = QHBoxLayout()
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Enter search term (e.g., 'stealc')")
+        self.search_input.setPlaceholderText("Enter search term")
         self.search_input.returnPressed.connect(self.search_collections)
+        description_label = QLabel(
+            "Search (e.g. sha_256_hash:{}, tag:{}, binary_name:{}, collection_name:{}, function_name:{}, model_name:{})"
+            #"Search Syntax: sha_256_hash: {hash}, tag: {tag}, binary_name: {binary_name}, collection_name: {collection_name},function_name: {function_name}, model_name: {model_name}"
+        )
+        description_label.setWordWrap(True)
+        
         
         self.search_button = QPushButton("Search")
         self.search_button.clicked.connect(self.search_collections)
@@ -70,6 +78,7 @@ class MatchFunctionsDialog(QDialog):
                 color: white;
                 padding: 6px 12px;
                 border-radius: 4px;
+                
             }
             QPushButton:hover {
                 background-color: #0056b3;
@@ -78,7 +87,9 @@ class MatchFunctionsDialog(QDialog):
         
         search_input_layout.addWidget(self.search_input)
         search_input_layout.addWidget(self.search_button)
+       
         search_layout.addLayout(search_input_layout)
+        search_layout.addWidget(description_label)
 
         # Collections table
         self.collections_table = QTableWidget()
@@ -94,36 +105,38 @@ class MatchFunctionsDialog(QDialog):
         
         self.collections_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.collections_table.setAlternatingRowColors(True)
+        self.collections_table.itemSelectionChanged.connect(self.on_result_selection_changed)
         
         search_layout.addWidget(self.collections_table)
         search_group.setLayout(search_layout)
         layout.addWidget(search_group)
 
         # Match settings section
-        settings_group = QGroupBox("Match Settings")
+        #settings_group = QGroupBox("Match Settings")
+        settings_group = QGroupBox()
         settings_layout = QVBoxLayout()
+
+        # Confidence slider
+        confidence_layout = QHBoxLayout()
+        confidence_layout.addWidget(QLabel("Confidence:"))
+        self.confidenceSlider = QSlider()
+        self.confidenceSlider.setMaximum(100)
+        self.confidenceSlider.setPageStep(5)
+        self.confidenceSlider.setSliderPosition(90)
+        self.confidenceSlider.setOrientation(Qt.Horizontal)
+        self.confidenceSlider.setInvertedAppearance(False)
+        self.confidenceSlider.setInvertedControls(False)
+        self.confidenceSlider.setTickPosition(QSlider.TicksBothSides)
+        self.confidenceSlider.setTickInterval(5)
+        self.confidenceSlider.setObjectName("confidenceSlider")
+        confidence_layout.addWidget(self.confidenceSlider)
         
-        # Distance threshold
-        distance_layout = QHBoxLayout()
-        distance_layout.addWidget(QLabel("Distance Threshold:"))
-        self.distance_spinbox = QDoubleSpinBox()
-        self.distance_spinbox.setRange(0.01, 1.0)
-        self.distance_spinbox.setValue(0.1)
-        self.distance_spinbox.setSingleStep(0.01)
-        self.distance_spinbox.setDecimals(2)
-        distance_layout.addWidget(self.distance_spinbox)
-        distance_layout.addStretch()
-        settings_layout.addLayout(distance_layout)
+        # Add confidence value label
+        self.confidence_value_label = QLabel("90")
+        self.confidenceSlider.valueChanged.connect(lambda value: self.confidence_value_label.setText(str(value)))
+        confidence_layout.addWidget(self.confidence_value_label)
         
-        # Max matches
-        matches_layout = QHBoxLayout()
-        matches_layout.addWidget(QLabel("Max Matches:"))
-        self.max_matches_spinbox = QSpinBox()
-        self.max_matches_spinbox.setRange(1, 100)
-        self.max_matches_spinbox.setValue(10)
-        matches_layout.addWidget(self.max_matches_spinbox)
-        matches_layout.addStretch()
-        settings_layout.addLayout(matches_layout)
+        settings_layout.addLayout(confidence_layout)
         
         # Debug symbols checkbox
         self.debug_symbols_checkbox = QCheckBox("Limit Matches to Debug Symbols")
@@ -136,26 +149,32 @@ class MatchFunctionsDialog(QDialog):
         # Action buttons
         button_layout = QHBoxLayout()
         
-        self.match_button = QPushButton("Match Functions")
-        self.match_button.setStyleSheet("""
-            QPushButton {
-                background-color: #28a745;
-                color: white;
-                padding: 8px 16px;
-                border-radius: 4px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #218838;
-            }
-            QPushButton:disabled {
-                background-color: #6c757d;
-            }
-        """)
-        self.match_button.clicked.connect(self.start_matching)
+        self.fetch_results_button = QPushButton("Fetch Results")
+        self.fetch_data_types_button = QPushButton("Fetch Data Types") 
+        self.rename_selected_button = QPushButton("Rename Selected")
+
+        for button in [self.fetch_results_button, self.fetch_data_types_button, self.rename_selected_button]:
+            button.setStyleSheet("""
+                QPushButton {
+                    background-color: #6c757d;
+                    color: white;
+                    padding: 6px 12px;
+                    border-radius: 4px;
+                }
+                QPushButton:hover {
+                    background-color: #5a6268;
+                }
+            """)
+
+        self.fetch_results_button.clicked.connect(self.start_matching)
+        self.fetch_data_types_button.clicked.connect(self.start_matching)
+        self.rename_selected_button.clicked.connect(self.start_matching)
         
-        button_layout.addWidget(self.match_button)
+        button_layout.addWidget(self.fetch_results_button)
+        button_layout.addWidget(self.fetch_data_types_button)
+        button_layout.addWidget(self.rename_selected_button)
         button_layout.addStretch()
+        
         
         layout.addLayout(button_layout)
         
@@ -222,6 +241,17 @@ class MatchFunctionsDialog(QDialog):
 
         results_widget.setLayout(layout)
         return results_widget
+    
+    def _search_collections(self):
+        log_info("RevEng.AI | Searching collections")
+        self.progress = create_progress_dialog(self, "RevEng.AI Search Collections", "Searching collections...")
+        search_term = self.search_input.text().strip()
+        self.search_collections_thread = SearchCollectionsThread(self.match_functions, self.bv, search_term)
+        self.search_collections_thread.finished.connect(self._on_search_collections_finished)
+        self.search_collections_thread.start()
+        
+        self.progress.show()
+        QCoreApplication.processEvents() 
 
     def search_collections(self):
         """Search for collections based on input"""

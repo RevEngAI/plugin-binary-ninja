@@ -11,14 +11,16 @@ class MatchFunctions:
         self.binary_id = None
         self.analyzed_functions = []
 
-    def search_collections(self, search_term: str = "") -> List[Dict]:
-        """Search for collections in RevEng.AI database"""
+    def search_collections(self, bv: BinaryView, search_term: str = "") -> List[Dict]:
         try:
             log_info(f"RevEng.AI | Searching collections with term: '{search_term}'")
+            query = self._parse_search_query(search_term)
+            log_info(f"RevEng.AI | Query: {query}")
             
             # Since RE_collections might not be available, we'll use RE_search to find binaries
             # and simulate collections based on search results
-            search_results = RE_search(fpath=search_term if search_term else "").json()
+            """
+            search_results = RE_search(fpath=bv.file.filename, search_term=search_term).json()
             
             if "query_results" not in search_results:
                 log_error("RevEng.AI | No search results found")
@@ -42,10 +44,10 @@ class MatchFunctions:
             
             log_info(f"RevEng.AI | Found {len(collections)} collections")
             return collections
-            
+            """            
         except Exception as e:
             log_error(f"RevEng.AI | Error searching collections: {str(e)}")
-            return []
+            return False, str(e)
 
     def get_collection_functions(self, collection_id: str) -> List[Dict]:
         """Get functions from a specific collection (simulated)"""
@@ -181,3 +183,102 @@ class MatchFunctions:
         except Exception as e:
             log_error(f"RevEng.AI | Error getting function details: {str(e)}")
             return None 
+        
+    def _parse_search_query(self, query):
+        """
+        Parse a search query with special selectors.
+
+        Args:
+            query (str): The search query string to parse
+
+        Returns:
+            dict: A dictionary containing parsed query components
+
+        Raises:
+            ValueError: If multiple non-tag selectors or a selector with raw
+                        query are used
+        """
+        # Initialize the result dictionary with default empty values
+        result = {
+            'query': None,
+            'sha_256_hash': None,
+            'tags': None,
+            'binary_name': None,
+            'collection_name': None,
+            'function_name': None,
+            'model_name': None
+        }
+
+        # List of possible selectors (excluding 'tag')
+        single_selectors = [
+            'sha_256_hash',
+            'binary_name',
+            'collection_name',
+            'function_name',
+            'model_name'
+        ]
+
+        # Parse selector-based queries
+        def extract_selector_value(query, selector):
+            """Helper function to extract selector value"""
+            selector_pattern = f"{selector}:"
+            selector_match = query.find(selector_pattern)
+
+            if selector_match != -1:
+                # Extract the value after the selector
+                start = selector_match + len(selector_pattern)
+                end = query.find(' ', start)
+
+                # If no space found, take till the end of string
+                if end == -1:
+                    end = len(query)
+
+                # Extract the value and the full selector part
+                value = query[start:end].strip()
+                full_selector_part = query[selector_match:end].strip()
+
+                return value, full_selector_part
+
+            return None, None
+
+        # Process tags first (can be multiple)
+        def process_tags(query):
+            tags = []
+            while True:
+                tag_value, tag_part = extract_selector_value(query, 'tag')
+                if not tag_value:
+                    break
+                tags.append(tag_value)
+                query = query.replace(tag_part, '').strip()
+            if len(tags) == 0:
+                tags = None
+            return tags, query
+
+        # Process tags
+        result['tags'], query = process_tags(query)
+
+        # Process other single selectors
+        for selector in single_selectors:
+            value, selector_part = extract_selector_value(query, selector)
+
+            if value:
+                # Check if this selector was already set
+                if result[selector] is not None:
+                    raise ValueError(
+                        f"Only one {selector} selector can be used.")
+
+                result[selector] = value
+                query = query.replace(selector_part, '').strip()
+
+        # Validation checks for additional text
+        query = query.strip()
+        if query:
+            # If query is not empty after removing selectors
+            if any(result[selector] is not None for selector in
+                   single_selectors):
+                raise ValueError(
+                    "Selector cannot be used with additional text.")
+            # If no other selectors, treat as raw query
+            result['query'] = query
+
+        return result
