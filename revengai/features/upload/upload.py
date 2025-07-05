@@ -1,6 +1,6 @@
 from binaryninja import BinaryView, log_info, log_error, log_debug, SymbolType, BinaryViewType
 from reait.api import RE_models, RE_upload, RE_analysis_lookup, RE_analyse
-from revengai_bn.utils import PeriodicChecker
+from revengai.utils import PeriodicChecker
 
 class BinaryUploader:
     def __init__(self, config):

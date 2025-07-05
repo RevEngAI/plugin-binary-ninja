@@ -7,7 +7,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap, QIcon
 from PySide6.QtCore import QCoreApplication
 from PySide6.QtWidgets import QMessageBox
-from revengai_bn.utils import create_progress_dialog
+from revengai.utils import create_progress_dialog
 from .auto_unstrip_thread import AutoUnstripThread
 import os
 

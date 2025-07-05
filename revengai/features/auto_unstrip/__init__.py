@@ -1,7 +1,7 @@
 from binaryninja import PluginCommand, log_info, BinaryView
 from .auto_unstrip import AutoUnstrip
 from .auto_unstrip_dialog import AutoUnstripDialog
-from revengai_bn.utils import BaseAuthFeature
+from revengai.utils import BaseAuthFeature
 
 class AutoUnstripFeature(BaseAuthFeature):
     def __init__(self, config=None):

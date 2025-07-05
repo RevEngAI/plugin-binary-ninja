@@ -6,8 +6,8 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton,
                              QSplitter, QTextEdit, QProgressBar, QSlider)
 from PySide6.QtCore import Qt, QTimer, QCoreApplication
 from PySide6.QtGui import QIcon
-from revengai_bn.utils import create_progress_dialog
-from revengai_bn.utils.data_thread import DataThread
+from revengai.utils import create_progress_dialog
+from revengai.utils.data_thread import DataThread
 from .tab_search import SearchTab
 from .tab_result import ResultTab
 
@@ -111,19 +111,19 @@ class MatchFunctionsDialog(QDialog):
             """)
         
         self.fetch_results_button.clicked.connect(self.start_matching)
-        self.fetch_data_types_button.clicked.connect(self.start_matching)
+        self.fetch_data_types_button.clicked.connect(self.start_fetching_data_types)
         self.rename_selected_button.clicked.connect(self.start_renaming)
 
         for button in [self.fetch_data_types_button, self.rename_selected_button]:
             button.setEnabled(False)
             button.setStyleSheet("""
                 QPushButton {
-                    background-color: #5a6268; 
+                    background-color: #474b4e; 
                     color: white;
                     padding: 6px 12px;
                     border-radius: 4px;
                 }
-            """) # another color #474b4e
+            """) 
         
         buttons_layout.addWidget(self.fetch_results_button)
         buttons_layout.addWidget(self.fetch_data_types_button)
@@ -178,6 +178,49 @@ class MatchFunctionsDialog(QDialog):
         self.rename_thread.finished.connect(self.on_renaming_finished)
         self.rename_thread.start()  
 
+    def start_fetching_data_types(self):
+        log_info("RevEng.AI | Starting function data type fetching process")
+        
+        try:
+            # Create and show progress dialog
+            self.progress = create_progress_dialog(self, "RevEng.AI Fetch Data Types", "Fetching data types...")
+            self.progress.show()
+            QCoreApplication.processEvents() 
+            self.status_label.setText("Fetching data types...")
+
+            # Validate that we have current matches
+            if not hasattr(self.results_tab, 'selected_results') or not self.results_tab.selected_results:
+                log_error("RevEng.AI | No current matches available for data type fetching")
+                self.progress.close()
+                QMessageBox.warning(
+                    self,
+                    "RevEng.AI Fetch Data Types",
+                    "No function matches available. Please run 'Fetch Results' first.",
+                    QMessageBox.Ok
+                )
+                return
+
+            self.fetch_data_types_thread = DataThread(
+                self.match_functions.fetch_data_types,
+                self.bv,
+                self.results_tab.selected_results
+            )
+            self.fetch_data_types_thread.finished.connect(self.on_fetching_data_types_finished)
+            self.fetch_data_types_thread.start()
+
+            log_info(f"RevEng.AI | Fetching data types thread started")
+            
+        except Exception as e:
+            log_error(f"RevEng.AI | Error starting data type fetching: {str(e)}")
+            if hasattr(self, 'progress'):
+                self.progress.close()
+            QMessageBox.critical(
+                self,
+                "RevEng.AI Fetch Data Types Error",
+                f"Failed to start data type fetching:\n{str(e)}",
+                QMessageBox.Ok
+            )
+
     def on_renaming_finished(self, success, data):
         """Handle renaming completion"""
         self.progress.close()
@@ -200,24 +243,34 @@ class MatchFunctionsDialog(QDialog):
             )
 
     def on_matching_finished(self, success, data):
-        """Handle matching completion"""
         self.progress.close()
         
         if success:
             self.results_tab.current_matches = data["data"]
             self.results_tab.populate_results_table()
-            self.rename_selected_button.setEnabled(len(self.results_tab.selected_results) > 0)
-            self.fetch_data_types_button.setEnabled(len(self.results_tab.selected_results) > 0)
+
+            if len(self.results_tab.selected_results) > 0:
+                for button in [self.fetch_data_types_button, self.rename_selected_button]:
+                    button.setEnabled(True)
+                    button.setStyleSheet("""
+                        QPushButton {
+                            background-color: #6c757d;
+                            color: white;
+                            padding: 6px 12px;
+                            border-radius: 4px;
+                        }
+                        QPushButton:hover {
+                            background-color: #5a6268;
+                        }
+                    """)
+                
             
-            # Switch to results tab
             self.tab_widget.setCurrentIndex(1)
             
-            # Update status
             successful_count = data["matched"]
             skipped_count = data["skipped"]
             failed_count = data["failed"]
             total_count = successful_count + skipped_count + failed_count
-            
             
             self.status_label.setText(
                 f"Total Functions Analyzed: {total_count} | "
@@ -247,5 +300,33 @@ class MatchFunctionsDialog(QDialog):
                 QMessageBox.Ok
             )
 
+    def on_fetching_data_types_finished(self, success, data):
+        """Handle data type fetching completion"""
+        self.progress.close()
+        
+        if success:
+            log_info(f"RevEng.AI | Data type fetching completed with {data['success_count']} functions having signatures")
+            self.results_tab.update_current_matches_with_signatures(data["signatures"])
+            self.results_tab.populate_results_table()
+            self.status_label.setText(f"Data type fetching completed: {data['success_count']} functions have signatures")
+
+            QMessageBox.information(
+                self,
+                "RevEng.AI Fetch Data Types",
+                f"Data types fetched successfully.\n{data['success_count']} function{'' if data['success_count'] == 1 else 's'} have signatures.",
+                QMessageBox.Ok
+            )
+        else:
+            log_error(f"RevEng.AI | Data type fetching failed: {data}")
+            self.status_label.setText(f"Data type fetching failed: {data}")
+            QMessageBox.critical(
+                self,
+                "RevEng.AI Fetch Data Types Error",
+                f"Failed to fetch data types:\n{data}",
+                QMessageBox.Ok
+            )
+
+    """
     def closeEvent(self, event):
         self.accept() 
+    """

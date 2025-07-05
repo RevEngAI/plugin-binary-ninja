@@ -4,8 +4,8 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                              QHeaderView, QGroupBox, QSlider, QCheckBox, QMessageBox)
 from PySide6.QtCore import Qt, QCoreApplication
 from PySide6.QtGui import QIcon
-from revengai_bn.utils import create_progress_dialog
-from revengai_bn.utils.data_thread import DataThread
+from revengai.utils import create_progress_dialog
+from revengai.utils.data_thread import DataThread
 
 class SearchTab(QWidget):
 

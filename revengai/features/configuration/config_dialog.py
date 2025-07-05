@@ -5,7 +5,7 @@ from PySide6.QtGui import QPixmap
 from binaryninja import log_info, log_error, log_warn
 import os
 from .config_save_thread import ConfigSaveThread
-from revengai_bn.utils import create_progress_dialog
+from revengai.utils import create_progress_dialog
 
 class ConfigDialog(QDialog):
     def __init__(self, config):

@@ -5,7 +5,7 @@ from .analysis_load_thread import AnalysisLoadThread
 from .choose_source_thread import ChooseSourceThread
 from binaryninja import log_error
 from PySide6.QtWidgets import QMessageBox
-from revengai_bn.utils import create_progress_dialog
+from revengai.utils import create_progress_dialog
 import os
 
 class ChooseSourceDialog(QDialog):

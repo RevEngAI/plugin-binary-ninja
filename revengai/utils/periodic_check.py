@@ -4,6 +4,7 @@ from typing import Optional
 from binaryninja import log_info, log_error, BinaryView
 from requests.exceptions import RequestException
 from reait.api import RE_status
+from PySide6.QtWidgets import QMessageBox
 
 class PeriodicChecker:
     def __init__(self):
@@ -39,6 +40,12 @@ class PeriodicChecker:
                         )
                 else:
                     log_info(f"RevEng.AI | Analysis completed with status: {status}")
+                    QMessageBox.information(
+                        None,
+                        "RevEng.AI Analysis Complete",
+                        f"Binary analysis completed!",
+                        QMessageBox.Ok
+                    )
 
             except RequestException as ex:
                 log_error(f"RevEng.AI | Error getting binary analysis status: {str(ex)}")

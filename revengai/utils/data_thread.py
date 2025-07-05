@@ -20,7 +20,6 @@ class DataThread(QThread):
 
             if success:
                 log_info(f"RevEng.AI | Data thread finished with success")
-                log_info(f"RevEng.AI | Content: {content}")
                 self.finished.emit(True, content)
             else:
                 self.finished.emit(False, content)

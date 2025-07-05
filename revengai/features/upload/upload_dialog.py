@@ -5,7 +5,7 @@ from PySide6.QtCore import Qt, QCoreApplication
 from binaryninja import log_info, log_error, log_warn
 from .model_load_thread import ModelLoadThread
 from .upload_thread import UploadBinaryThread
-from revengai_bn.utils import create_progress_dialog
+from revengai.utils import create_progress_dialog
 
 class UploadDialog(QDialog):
     def __init__(self, config, uploader, bv):
