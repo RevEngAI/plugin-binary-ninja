@@ -85,7 +85,8 @@ class BinaryUploader:
                 skip_scraping=True,
                 skip_sbom=True,
                 skip_capabilities=True,
-                advanced_analysis=False
+                advanced_analysis=False,
+                duplicate=True
             ).json()
 
             log_info(f"RevEng.AI | Analysis response: {analysis}")
@@ -94,8 +95,6 @@ class BinaryUploader:
                 
             log_info(f"RevEng.AI | Binary ID: {analysis['binary_id']}")
             log_info(f"RevEng.AI | Analysis ID: {analysis_info['analysis_id']}")
-            
-            # TODO: Set binary and analysis id in config in form of id in array in settings
 
             PeriodicChecker().start_checking(bv, analysis["binary_id"])
 

@@ -46,9 +46,9 @@ class AutoUnstrip:
             functions = []
             for function in functions_by_distance:
                 functions.append({"function_id": function['origin_function_id'], "function_name": function['nearest_neighbor_function_name']})
-            log_info(f"RevEng.AI | Functions by distance: {functions}")
+            #log_info(f"RevEng.AI | Functions by distance: {functions}")
             functions_by_score = RE_name_score(functions).json()["data"]
-            log_info(f"RevEng.AI | Functions by score: {functions_by_score}")
+            #log_info(f"RevEng.AI | Functions by score: {functions_by_score}")
             renamed_count = 0
             errors = []
             for result in functions_by_distance:

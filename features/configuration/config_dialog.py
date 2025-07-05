@@ -25,7 +25,7 @@ class ConfigDialog(QDialog):
         header_layout = QHBoxLayout()
         
         logo_label = QLabel()
-        logo_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "images", "logo.png")
+        logo_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "images", "logo.png") ## review that line
         if os.path.exists(logo_path):
             pixmap = QPixmap(logo_path)
             pixmap = pixmap.scaled(100, 100, Qt.KeepAspectRatio, Qt.SmoothTransformation)
