@@ -26,8 +26,7 @@ class ConfigurationFeature():
         return self.config  
     
     def _register_binary_view_event(self):
-        BinaryViewType.add_binaryview_finalized_event(self._add_binaryview_finalized_event) # TODO: Use binaryview_finalized_event instead, but without load 3 times
-        # TODO: Nao usar binaryview_finalized_event para checkar creds, resulta em comandos nao carregando.q
+        BinaryViewType.add_binaryview_finalized_event(self._add_binaryview_finalized_event) 
         log_info("RevEng.AI | Registered binary view event handler")
 
     def _add_binaryview_finalized_event(self, bv):
@@ -44,7 +43,7 @@ class ConfigurationFeature():
                     None,
                     "RevEng.AI - Binary Not Found",
                     "This binary has not been processed in the RevEng.AI platform yet.\n\n"
-                    "Please upload and process the binary first using the 'RevEng.AI > Upload Binary' option "
+                    "Please upload and process the binary first using the 'RevEng.AI > Process Binary' option "
                     "before using other RevEng.AI features.",
                     QMessageBox.Ok
                 )
