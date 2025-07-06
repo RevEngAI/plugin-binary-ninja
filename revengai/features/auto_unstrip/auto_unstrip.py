@@ -69,10 +69,10 @@ class AutoUnstrip:
                     for function in functions_by_score:
                         if function['function_id'] == func_id:
                            if function['box_plot']["average"] < 0.9:
-                                log_info(f"RevEng.AI | Function {function['function_id']} has a score of {function['box_plot']["average"]:.2f} for name {function['function_name']}, skipping")
+                                log_info(f"RevEng.AI | Function {function['function_id']} has a score of {function['box_plot']['average']:.2f} for name {function['function_name']}, skipping")
                                 break
                            else:
-                                log_info(f"RevEng.AI | Function {function['function_id']} has a score of {function['box_plot']["average"]:.2f} for name {function['function_name']}, renaming")
+                                log_info(f"RevEng.AI | Function {function['function_id']} has a score of {function['box_plot']['average']:.2f} for name {function['function_name']}, renaming")
                                 if self._rename_function(bv, func_addr, new_name, new_name_mangled):
                                     renamed_count += 1
                                 break
