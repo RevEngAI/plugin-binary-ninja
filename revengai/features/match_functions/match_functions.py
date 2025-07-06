@@ -110,14 +110,14 @@ class MatchFunctions:
                     for function_by_score in functions_by_score:
                         if function_by_score['function_id'] == result['origin_function_id']:
                            
-                           line["confidence"] = f"{function_by_score['box_plot']["average"]:.2f}%"
+                           line["confidence"] = f"{function_by_score['box_plot']['average']:.2f}%"
 
                            if not line["matched_name"] or line["matched_name"].startswith(("sub_", "FUN_")):
                                 line["error"] = "Function name is also debug symbol"
                                 log_info(f"RevEng.AI | Function name is also debug symbol: {line}")
                                 break
                            
-                           if function_by_score['box_plot']["average"] < confidence_threshold:
+                           if function_by_score["box_plot"]["average"] < confidence_threshold:
                                 line["error"] = "Function score is below confidence threshold"
                                 break
                            else:
