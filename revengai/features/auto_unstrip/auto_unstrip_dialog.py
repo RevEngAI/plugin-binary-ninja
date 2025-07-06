@@ -25,17 +25,28 @@ class AutoUnstripDialog(QDialog):
 
         layout = QVBoxLayout()
 
+        header_layout = QHBoxLayout()
+        
+        logo_label = QLabel()
+        logo_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "images", "logo.png")
+        if os.path.exists(logo_path):
+            pixmap = QPixmap(logo_path)
+            pixmap = pixmap.scaled(100, 100, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            logo_label.setPixmap(pixmap)
+        header_layout.addWidget(logo_label)
+        
         info_layout = QVBoxLayout()
         title_label = QLabel("Auto Unstrip Binary")
         title_label.setStyleSheet("font-size: 18px; font-weight: bold;")
         description_label = QLabel(
-            "Using official RevEng.AI sources, function names will be recovered based on a low similarity threshold and limited to available debug symbols.\nFunctions will be renamed automatically for easier analysis.\n\nThis process may take several minutes depending on the binary size."
+            "Using official RevEng.AI sources, function names will be recovered based on a high similarity and confidence threshold and limited to available debug symbols.\nFunctions will be renamed automatically for easier analysis.\n\nThis process may take several minutes depending on the binary size."
         )
         description_label.setWordWrap(True)
         info_layout.addWidget(title_label)
         info_layout.addWidget(description_label)
+        header_layout.addLayout(info_layout, stretch=1)
         
-        layout.addLayout(info_layout)
+        layout.addLayout(header_layout)
         layout.addSpacing(20)
 
         # Buttons
