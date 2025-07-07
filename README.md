@@ -1,6 +1,5 @@
-# <img src="./images/banner.png"> 
-
-# Official Binary Ninja Plugin for RevEng.AI
+<p align="center"><img src="./images/banner.png" ></p>
+Official Binary Ninja Plugin for RevEng.AI
 
 ### Features Supported
 
@@ -38,6 +37,7 @@ Expected output locations:
 4. Ensure the folder structure looks like this:
 
 ```
+Example in Linux...
 ~/.binaryninja/plugins/
    └── revengai/
       └── [plugin files...]
@@ -47,67 +47,73 @@ Expected output locations:
 
 ### Step 3: Install Dependencies
 
-In your system terminal (not inside Binary Ninja), install required dependencies using:
+In your system terminal (not inside Binary Ninja), move to the directory with the 'requirements.txt' file and install required dependencies using:
 
 ```bash
-pip install -r ~/.binaryninja/plugins/revengai/requirements.txt
+pip install -r requirements.txt
 ```
 
 Or directly from within Binary Ninja’s built-in Python terminal:
 
 ```python
 import subprocess
-subprocess.check_call(['pip', 'install', '-r', '/path/to/revengai/requirements.txt'])
+subprocess.check_call(['pip', 'install', '-r', '/path/to/requirements.txt']) # Change to your path to requirements.txt
 ```
 
 ---
 
 ## Using the Plugin ⚙️
 
-Once installed, you’ll find `RevEng.AI` in the Binary Ninja toolbar menu.
+Once installed, you’ll find `RevEng.AI` listed in the Binary Ninja plugins toolbar menu.
 
-> 🖼️ *Insert screenshot of the RevEng.AI menu in Binary Ninja*
+<img src="images/plugintoolbar.png" >
+
+Make sure to restart Binary Ninja completely after installation.
+Then, check the Plugins menu — the RevEng.AI plugin should be visible.
+Finally, load a binary and explore the features described below.
 
 ### 1. Configure the Plugin
 
 Select `Configuration` from the menu to set up your API key and host.
 
-> 🖼️ *Insert screenshot of configuration window*
+<img src="./images/config.png" >
 
-Clicking "Continue" will validate your API key and auto-populate available models.
-
----
-
-### 2. Choose Source Analysis
-
-If you’ve already uploaded and processed a binary in the platform, you can select it as your working source.
-
-> 🖼️ *Insert screenshot of the choose-source UI*
-
-This is required before using some features like function matching or auto-unstrip.
+Clicking "Continue" will validate your API key.
 
 ---
 
-### 3. Process a Binary
+### 2. Process a Binary
 
 Upload the currently loaded binary to RevEng.AI:
 
-- Open your binary in Binary Ninja
 - Select `RevEng.AI > Process Binary`
 
-> 🖼️ *Insert screenshot of binary processing prompt*
+<img src="./images/processbinary.png" >
 
+Before starting the process, you can add a PDB file and debug information, assign custom tags for better tracking, choose which AI model you want to use, and decide whether to keep the analysis private (default) or make it publicly available.
 The plugin will handle the upload and initiate the analysis. Once completed, an internal analysis ID is assigned.
 
 ---
 
-### 4. Auto-Unstrip
+### 3. Choose Source Analysis
 
-Bring back stripped symbol names automatically:
+If you have already processed your binary on the platform or if there are publicly available analyses, you can select one as your working source.
 
-- Select `RevEng.AI > Auto-Unstrip`
+- Select `RevEng.AI > Choose Source`
 
-> 🖼️ *Insert screenshot of auto-unstrip in action*
+<img src="./images/choosesource.png" >
+
+This is required before using some features like function matching or auto unstrip.
+
+---
+
+### 4. Auto Unstrip
+
+Bring back symbol names automatically:
+
+- Select `RevEng.AI > Auto Unstrip`
+
+<img src="./images/autounstrip.png" >
 
 Functions will be renamed with the most likely matching names from your configured collections.
 
@@ -117,7 +123,6 @@ Functions will be renamed with the most likely matching names from your configur
 
 Use function matching to identify similar functions in other binaries or collections:
 
-- Open any function
 - Click `RevEng.AI > Match Functions`
 
 > 🖼️ *Insert screenshot of match functions result*
