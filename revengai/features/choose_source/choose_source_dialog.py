@@ -1,8 +1,7 @@
 from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QComboBox, QPushButton, QHBoxLayout
 from PySide6.QtGui import QPixmap
 from PySide6.QtCore import Qt, QCoreApplication
-from .analysis_load_thread import AnalysisLoadThread
-from .choose_source_thread import ChooseSourceThread
+from revengai.utils.data_thread import DataThread
 from binaryninja import log_error
 from PySide6.QtWidgets import QMessageBox
 from revengai.utils import create_progress_dialog
@@ -34,11 +33,7 @@ class ChooseSourceDialog(QDialog):
         info_layout = QVBoxLayout()
         title_label = QLabel("Select Analysis Source")
         title_label.setStyleSheet("font-size: 18px; font-weight: bold;")
-        description_label = QLabel(
-            "Choose the source for your binary analysis. This selection will be used for all subsequent "
-            "features in the plugin, including auto-unstripping, function analysis, and other operations.\n\n"
-            #"The selected source will determine which database and models are used for your analysis tasks."
-        )
+        description_label = QLabel("Choose the source for your binary analysis. This selection will be used for all subsequent features in the plugin, including auto-unstripping, function analysis, and other operations.\n\n")
         description_label.setWordWrap(True)
         info_layout.addWidget(title_label)
         info_layout.addWidget(description_label)
@@ -87,65 +82,48 @@ class ChooseSourceDialog(QDialog):
         self.progress.show()
         QCoreApplication.processEvents()
 
-        self.analysis_thread = AnalysisLoadThread(self.choose_source, self.bv)
+        self.analysis_thread = DataThread(self.choose_source.get_analysis, self.bv)
         self.analysis_thread.finished.connect(self._on_analysis_loaded)
-        self.analysis_thread.error.connect(self._on_analysis_load_error)
         self.analysis_thread.start()
-        
 
-    def _on_analysis_loaded(self, analysis):
+    def _on_analysis_loaded(self, success, analysis):
         self.progress.close()
         self.combo.clear()
-        for analysis in analysis:
-            self.combo.addItem(analysis)
-
-    def _on_analysis_load_error(self, error_msg):
-        self.progress.close()
-        log_error(f"RevEng.AI | Failed to load analysis: {error_msg}")
-        QMessageBox.critical(
-            self,
-            "RevEng.AI Analysis Loading Error",
-            f"Failed to load available analysis: {error_msg}",
-            QMessageBox.Ok
-        )
-        self.reject()   
+        if success:
+            if not len(analysis):
+                log_error("RevEng.AI | No analysis found, try processing the binary again.")
+                QMessageBox.critical(self, "RevEng.AI Analysis Loading Error", "No analysis found, try processing the binary again.", QMessageBox.Ok)
+                self.reject()
+                return
+            
+            for analysis in analysis:
+                self.combo.addItem(analysis)
+        else:
+            log_error(f"RevEng.AI | Failed to load analysis: {analysis}")
+            QMessageBox.critical(self, "RevEng.AI Analysis Loading Error", f"Failed to load available analysis: {analysis}", QMessageBox.Ok)
+            self.reject()
 
     def _choose_source(self):
         if not self.combo.currentText():
-            log_warn("RevEng.AI | Source selection is required")
-            QMessageBox.warning(
-                self,
-                "RevEng.AI Choose Source",
-                "Please select a source for analysis.",
-                QMessageBox.Ok
-            )
+            log_error("RevEng.AI | Source selection is required")
+            QMessageBox.warning(self, "RevEng.AI Choose Source", "Please select a source for analysis.", QMessageBox.Ok)
             return
             
         self.progress = create_progress_dialog(self, "RevEng.AI Choose Source", "Choosing source...")
-        
-        self.choose_source_thread = ChooseSourceThread(self.choose_source, self.bv, self.combo.currentText())
+        self.progress.show()
+        QCoreApplication.processEvents()
+
+        self.choose_source_thread = DataThread(self.choose_source.choose_source, self.bv, self.combo.currentText())
         self.choose_source_thread.finished.connect(self._on_choose_source_finished)
         self.choose_source_thread.start()
         
-        self.progress.show()
-        QCoreApplication.processEvents()
-        
-    def _on_choose_source_finished(self, success, error_message):
+    def _on_choose_source_finished(self, success, message):
         self.progress.close()
         
         if success:
-            QMessageBox.information(
-                self,
-                "RevEng.AI Choose Source",
-                "Source chosen successfully!\nYou can now view the analysis on RevEng.AI",
-                QMessageBox.Ok
-            )
+            QMessageBox.information(self, "RevEng.AI Choose Source", message, QMessageBox.Ok)
             self.accept()
         else:
-            log_error(f"RevEng.AI | Failed to choose source: {error_message}")
-            QMessageBox.critical(
-                self,
-                "RevEng.AI Choose Source Error",
-                f"Failed to choose source: {error_message}",
-                QMessageBox.Ok
-            )
+            log_error(f"RevEng.AI | Failed to choose source: {message}")
+            QMessageBox.critical(self, "RevEng.AI Choose Source Error", f"Failed to choose source: {message}", QMessageBox.Ok)
+            self.reject()

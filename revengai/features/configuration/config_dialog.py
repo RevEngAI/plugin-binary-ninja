@@ -15,7 +15,6 @@ class ConfigDialog(QDialog):
         self.progress = None
         self.init_ui()
         
-        
     def init_ui(self):
         self.setWindowTitle("RevEng.AI Configuration Wizard")
         self.setMinimumWidth(500)
@@ -98,7 +97,6 @@ class ConfigDialog(QDialog):
         
         self.setLayout(layout)
 
-        
     def save_config(self):
         api_key = self.api_key_input.text().strip()
         host = self.host_input.text().strip()
@@ -131,7 +129,6 @@ class ConfigDialog(QDialog):
         
         self.progress.show()
 
-        
     def _on_save_finished(self, success, error_message):
         self.progress.close()
         

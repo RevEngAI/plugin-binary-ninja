@@ -1,11 +1,10 @@
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
                               QComboBox, QPushButton, QRadioButton, QButtonGroup,
                               QLineEdit, QGroupBox, QFileDialog, QMessageBox)
-from PySide6.QtCore import Qt, QCoreApplication
-from binaryninja import log_info, log_error, log_warn
-from .model_load_thread import ModelLoadThread
-from .upload_thread import UploadBinaryThread
+from PySide6.QtCore import QCoreApplication
+from binaryninja import log_error
 from revengai.utils import create_progress_dialog
+from revengai.utils.data_thread import DataThread
 
 class UploadDialog(QDialog):
     def __init__(self, config, uploader, bv):
@@ -86,82 +85,52 @@ class UploadDialog(QDialog):
         
         self.load_models()
 
-
     def load_models(self):
         self.progress = create_progress_dialog(self, "RevEng.AI", "Loading available models...")
-        
-        self.model_thread = ModelLoadThread(self.uploader, self.bv)
-        self.model_thread.finished.connect(self._on_models_loaded)
-        self.model_thread.error.connect(self._on_model_load_error)
-        self.model_thread.start()
-
         self.progress.show()
         QCoreApplication.processEvents()
         
-    def _on_models_loaded(self, models):
+        self.model_thread = DataThread(self.uploader.get_models, self.bv)
+        self.model_thread.finished.connect(self._on_models_loaded)
+        self.model_thread.start()
+
+    def _on_models_loaded(self, success, models):
         self.progress.close()
         self.model_combo.clear()
-        for model in models:
-            self.model_combo.addItem(model)
+        if success:
+            for model in models:
+                self.model_combo.addItem(model)
+        else:
+            log_error(f"RevEng.AI | Failed to load models: {models}")
+            QMessageBox.critical(self, "RevEng.AI Model Loading Error", f"Failed to load available models: {models}", QMessageBox.Ok)
+            self.reject()
             
-    def _on_model_load_error(self, error_msg):
-        self.progress.close()
-        log_error(f"RevEng.AI | Failed to load models: {error_msg}")
-        QMessageBox.critical(
-            self,
-            "RevEng.AI Model Loading Error",
-            f"Failed to load available models: {error_msg}",
-            QMessageBox.Ok
-        )
-        self.reject()  
-
     def upload_binary(self):
         if not self.model_combo.currentText():
-            log_warn("RevEng.AI | Model selection is required")
-            QMessageBox.warning(
-                self,
-                "RevEng.AI Upload",
-                "Please select a model for analysis.",
-                QMessageBox.Ok
-            )
+            log_error("RevEng.AI | Model selection is required")
+            QMessageBox.warning(self, "RevEng.AI Upload", "Please select a model for analysis.", QMessageBox.Ok)
             return
             
         self.progress = create_progress_dialog(self, "RevEng.AI Upload", "Uploading binary to RevEng.AI...")
-        
-        self.upload_thread = UploadBinaryThread(self.uploader, self.bv, self.get_upload_options())
-        self.upload_thread.finished.connect(self._on_upload_finished)
-        self.upload_thread.start()
-        
         self.progress.show()
         QCoreApplication.processEvents()
+        
+        self.upload_thread = DataThread(self.uploader.upload_binary, self.bv, self.get_upload_options())
+        self.upload_thread.finished.connect(self._on_upload_finished)
+        self.upload_thread.start()
         
     def _on_upload_finished(self, success, error_message):
         self.progress.close()
         
         if success:
-            QMessageBox.information(
-                self,
-                "RevEng.AI Upload",
-                "Binary uploaded successfully!\nYou can now view the analysis on RevEng.AI",
-                QMessageBox.Ok
-            )
+            QMessageBox.information(self, "RevEng.AI Upload", "Binary uploaded successfully!\nYou can now view the analysis on RevEng.AI", QMessageBox.Ok)
             self.accept()
         else:
             log_error(f"RevEng.AI | Failed to upload binary: {error_message}")
-            QMessageBox.critical(
-                self,
-                "RevEng.AI Upload Error",
-                f"Failed to upload binary: {error_message}",
-                QMessageBox.Ok
-            )
+            QMessageBox.critical(self,"RevEng.AI Upload Error", f"Failed to upload binary: {error_message}", QMessageBox.Ok)
         
     def browse_debug_info(self):
-        file_path, _ = QFileDialog.getOpenFileName(
-            self,
-            "Select Debug Info or PDB",
-            "",
-            "Debug Info (*.pdb *.debug);;All Files (*.*)"
-        )
+        file_path, _ = QFileDialog.getOpenFileName(self, "Select Debug Info or PDB", "", "Debug Info (*.pdb *.debug);;All Files (*.*)")
         if file_path:
             self.debug_combo.setCurrentText(file_path)
             

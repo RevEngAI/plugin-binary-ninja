@@ -16,7 +16,7 @@ class PeriodicChecker:
             self._current_timer = None
             log_info("RevEng.AI | Stopped periodic status check")
 
-    def start_checking(self, binary_view: BinaryView, binary_id: int, interval: float = 60) -> None:
+    def start_checking(self, binary_view: BinaryView, binary_id: int, config_callback, interval: float = 60) -> None:
         def _worker(bv: BinaryView, bid: int):
             try:
                 response = RE_status(bv.file.filename, bid)
@@ -39,6 +39,7 @@ class PeriodicChecker:
                             f"RevEng.AI | Scheduled next status check for: {basename(bv.file.filename)} [{bid}]"
                         )
                 else:
+                    config_callback(binary_id)
                     log_info(f"RevEng.AI | Analysis completed with status: {status}")
                     QMessageBox.information(
                         None,

@@ -11,7 +11,7 @@ class ChooseSourceFeature(BaseAuthFeature):
 
     def register(self):
         PluginCommand.register(
-            "RevEng.AI\\Choose Source",
+            "RevEng.AI\\3 - Choose Source",
             "Choose a source for the binary analysis",
             self.show_choose_source_dialog,
             self.is_valid

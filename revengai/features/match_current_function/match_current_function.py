@@ -1,14 +1,15 @@
-from binaryninja import BinaryView, log_info, log_error
-from reait.api import RE_nearest_symbols_batch, RE_analyze_functions, RE_collections_search, RE_binaries_search, RE_name_score, RE_functions_data_types, RE_functions_data_types_poll
+from binaryninja import BinaryView, log_info, log_error, Symbol, SymbolType
+from reait.api import RE_authentication, RE_search, RE_nearest_symbols_batch, RE_analyze_functions, RE_collections_search, RE_binaries_search, RE_name_score, RE_functions_data_types, RE_functions_data_types_poll
 from typing import List, Dict, Tuple, Optional, Any
 from datetime import datetime
 import os
+import json
 import re
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from revengai.utils import rename_function as rename_function_util
 
-class MatchFunctions:
+class MatchCurrentFunction:
     def __init__(self, config):
         self.config = config
         self.base_addr = None
@@ -33,15 +34,16 @@ class MatchFunctions:
             return False, str(e)
 
     def _process_batch(self, function_ids: List[int], id_to_addr: Dict[int, int], confidence_threshold: float, debug_symbols: bool, bv: BinaryView) -> Tuple[int, List[str]]:
+        """Process a batch of function IDs and return the number of matched functions and any errors"""
         try:
             log_info(f"RevEng.AI | Processing batch of {len(function_ids)} functions")
 
             functions_by_distance = RE_nearest_symbols_batch(
                 function_ids=function_ids,
-                debug_enabled=debug_symbols,
+                debug_enabled=self.debug_symbols,
                 collections=self.filtered_collections,
                 binaries=self.filtered_binaries,
-                nns=1
+                nns=self.debug_symbols_count
             ).json()["function_matches"]
             
             functions = []
@@ -49,7 +51,9 @@ class MatchFunctions:
                 functions.append({"function_id": function['origin_function_id'], "function_name": function['nearest_neighbor_function_name']})
             if len(functions) == 0:
                 return 0, []
+            #log_info(f"RevEng.AI | Functions by distance: {functions}")
             functions_by_score = RE_name_score(functions).json()["data"]
+            #log_info(f"RevEng.AI | Functions by score: {functions_by_score}")
             matched_count = 0
             lines = []
             for result in functions_by_distance:
@@ -90,7 +94,7 @@ class MatchFunctions:
                                 log_info(f"RevEng.AI | Function name is also debug symbol: {line}")
                                 break
                            
-                           if function_by_score["box_plot"]["average"] < confidence_threshold:
+                           if function_by_score["box_plot"]["average"] < similarity_threshold:
                                 line["error"] = "Function score is below confidence threshold"
                                 break
                            else:
@@ -114,109 +118,84 @@ class MatchFunctions:
             return 0, [str(e)]
 
     def match_functions(self, bv: BinaryView, options: Dict[str, Any]) -> List[Dict]:
+        """Match functions from the binary against RevEng.AI database"""
         try:
             log_info("RevEng.AI | Starting function matching")
 
-            confidence_threshold = options.get("confidence_threshold", 0.1)
+            similarity_threshold = options.get("similarity_threshold", 90) * 0.01
             selected_collections = options.get("selected_collections", [])
             debug_symbols = options.get("debug_symbols", False)
+            debug_symbols_count = options.get("debug_symbols_count", 5)
+            function_addr = options.get("function", None)
             result = { "matched": 0, "skipped": 0, "data": [] }
 
-            self.filtered_collections = []
-            self.filtered_binaries = []
+            functions = bv.get_functions_containing(function_addr)
+            
+            if not functions:
+                log_error(f"RevEng.AI | Function not found at 0x{function_addr:x}")
+                raise Exception("Function not found at address")
+            
+            function = functions[0]
+            log_info(f"RevEng.AI | Function: {function.name} at 0x{function.start:x}")
+
+            filtered_collections = []
+            filtered_binaries = []
             for item in selected_collections:
                 if item["type"] == "Collection":
-                    self.filtered_collections.append(item["id"])
+                    filtered_collections.append(item["id"])
                 else:
-                    self.filtered_binaries.append(item["id"])
+                    filtered_binaries.append(item["id"])
 
-            log_info(f"RevEng.AI | Confidence threshold: {confidence_threshold}")
+            log_info(f"RevEng.AI | Similarity threshold: {similarity_threshold}")
             log_info(f"RevEng.AI | Selected collections: {selected_collections}")
             log_info(f"RevEng.AI | Debug symbols: {debug_symbols}")
+            log_info(f"RevEng.AI | Debug symbols count: {debug_symbols_count}")
+            log_info(f"RevEng.AI | Function: 0x{function_addr:x}")
 
             binary_id = self.config.get_binary_id(bv)
             if not binary_id:
                 raise Exception("Analysis not found. Please choose one using 'Choose Source' feature.")
             
             analyzed_functions = RE_analyze_functions(self.path, binary_id).json()["functions"]
-            function_ids = [func["function_id"] for func in analyzed_functions]
 
-            log_info(f"RevEng.AI | Found {len(function_ids)} functions to match")
+            analyzed_function = next((f for f in analyzed_functions if (f["function_vaddr"] + bv.image_base) == function.start), None)
+            if not analyzed_function:
+                log_error(f"RevEng.AI | Function {function.name} not found in analyzed functions")
+                raise Exception("Function not found in analyzed functions")
+            
+            log_info(f"RevEng.AI | Found function {function.name} at 0x{function.start:x}")
 
-            functions = bv.functions
-            len_functions = len(functions)
-
-            log_info(f"RevEng.AI | Found {len_functions} functions and {len(analyzed_functions)} analyzed functions.")
-
-            for index, function in enumerate(functions, 1):
-                #log_info( f"RevEng.AI | Searching for {function.name} [{index}/{len_functions}]")
-    
-                analyzed_function = next((f for f in analyzed_functions if (f["function_vaddr"] + bv.image_base) == function.start), None)
-
-                if analyzed_function:
-                    #log_info(f"RevEng.AI | Found function {function.name} at {function.start:x}")
-                    function_ids.append(analyzed_function["function_id"])
-                else:
-                    result["skipped"] += 1 
-                    result["data"].append({
-                        "icon_path": f"{os.path.dirname(__file__)}/../../images/failed.png",
-                        "icon_text": "Failed",
+            functions_by_distance = RE_nearest_symbols_batch(
+                function_ids=[analyzed_function["function_id"]],
+                distance=similarity_threshold,
+                debug_enabled=debug_symbols,
+                collections=filtered_collections,
+                binaries=filtered_binaries,
+                nns=debug_symbols_count
+            ).json()["function_matches"]
+            results = []
+            for result in functions_by_distance:
+                try:
+                    results.append({
                         "original_name": function.name,
-                        "matched_name": "N/A",
+                        "matched_name": result['nearest_neighbor_function_name_mangled'] if result['nearest_neighbor_function_name_mangled'] else result['nearest_neighbor_function_name'],
                         "signature": "N/A",
-                        "matched_binary": "N/A",
-                        "similarity": "0.0%",
-                        "confidence": "0.0%",
-                        "error": "No Similar Function Found",
+                        "matched_binary": result['nearest_neighbor_binary_name'],
+                        "similarity": f"{(result['confidence'] * 100):.2f}%",
+                        "nearest_neighbor_id": result['nearest_neighbor_id'],
                         "function_address": function.start
                     })
-            
-            chunk_size = 50
-            chunks = [function_ids[i:i + chunk_size] for i in range(0, len(function_ids), chunk_size)]
 
-            log_info(f"RevEng.AI | Processing {len(function_ids)} functions in {len(chunks)} chunks of size {chunk_size}")
+                except Exception as e:
+                    log_error(f"RevEng.AI | Error processing function {result['origin_function_id']}: {str(e)}")
+            return True, results
 
-            id_to_addr = {
-                func["function_id"]: func["function_vaddr"] + bv.image_base
-                for func in analyzed_functions
-            }
-
-            total_matched_functions = 0
-            with ThreadPoolExecutor(max_workers=4) as executor:
-                future_to_chunk = {
-                    executor.submit(self._process_batch, chunk, id_to_addr, confidence_threshold, debug_symbols, bv): i 
-                    for i, chunk in enumerate(chunks)
-                }
-
-                for future in as_completed(future_to_chunk):
-                    chunk_index = future_to_chunk[future]
-                    try:    
-                        matched_count, lines = future.result()
-                        total_matched_functions += matched_count
-                        result["data"].extend(lines)
-                        log_info(f"RevEng.AI | Chunk {chunk_index} completed: matched {matched_count} functions")
-                    except Exception as e:
-                        log_error(f"RevEng.AI | Error processing chunk {chunk_index}: {str(e)}")
-            
-            result["matched"] = total_matched_functions
-            result["failed"] = len(analyzed_functions) - total_matched_functions - result["skipped"]
-            
-            def parse_confidence(item):
-                try:
-                    return float(item["confidence"].strip('%'))
-                except (KeyError, ValueError):
-                    return 0.0
-
-            sorted_list = sorted(result["data"], key=parse_confidence, reverse=True)
-            result["data"] = sorted_list
-            
-            return True, result
-            
         except Exception as e:
-            log_error(f"RevEng.AI | Error matching functions: {str(e)}")
-            raise e
+            log_error(f"RevEng.AI | Error in function matching: {str(e)}")
+            raise
 
     def get_function_details(self, bv: BinaryView, function_address: int) -> Optional[Dict]:
+        """Get detailed information about a specific function"""
         try:
             function = bv.get_function_at(function_address)
             if not function:
@@ -224,19 +203,18 @@ class MatchFunctions:
                 
             return {
                 "name": function.name,
-                "address": hex(function_address),
-                "size": len(function),
+                "address": function.start,
+                "size": function.total_bytes,
+                "signature": str(function.type),
                 "basic_blocks": len(function.basic_blocks),
-                "instructions": sum(len(bb) for bb in function.basic_blocks),
                 "call_sites": len(function.call_sites),
                 "callers": len(function.callers),
-                "callees": len(function.callees)
+                "callees": len(function.callees),
             }
-            
         except Exception as e:
             log_error(f"RevEng.AI | Error getting function details: {str(e)}")
-            return None 
-        
+            return None
+
     def _parse_search_query(self, query: str) -> dict:
         patterns = [
             "sha_256_hash",
@@ -268,19 +246,14 @@ class MatchFunctions:
         return result   
 
     def _is_query_empty(self, query: dict) -> bool:
-        """
-        Check if the query dictionary is empty or contains only None values.
+        """Check if query is empty or contains only empty values"""
+        if not query:
+            return True
+        
+        return all(not str(v).strip() for v in query.values())
 
-        Args:
-            query (dict): The query dictionary to check
-
-        Returns:
-            bool: True if the query is empty, False otherwise
-        """
-        return all(value is None for value in query.values())
-    
     def _search_collection(self, query: Dict[str, Any] = {}) -> None:
-
+        
         def parse_date(date_str: str) -> str:
             dt = datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%S.%f")
             return dt.strftime("%Y-%m-%d %H:%M:%S")
@@ -333,120 +306,140 @@ class MatchFunctions:
             log_error("Getting collections failed. Reason: %s", str(e))
             return False, str(e)
 
-    def rename_functions(self, bv: BinaryView, selected_results: List[Dict]) -> List[Dict]:
-        """Rename functions from the binary against RevEng.AI database"""
+    def rename_function(self, bv: BinaryView, selected_result: Dict) -> List[Dict]:
         try:
-            log_info("RevEng.AI | Starting function renaming")
-
+            log_info(f"RevEng.AI | Starting function renaming for {len(selected_result)} functions")
+            
             renamed_count = 0
-            for result in selected_results:
-                # Convert function_address from string to int
-                try:
-                    addr = int(result['function_address'])
-                except (ValueError, TypeError):
-                    log_error(f"RevEng.AI | Invalid function address: {result}")
-                    continue
-
-                if rename_function_util(bv, addr, result['matched_name']):
-                    renamed_count += 1
-
-            success_message = f"Successfully renamed {renamed_count} functions!" if renamed_count > 0 else "No functions were renamed!"
+            failed_count = 0
+            
+            function_address = selected_result.get("function_address")
+            new_name = selected_result.get("matched_name")
+            
+            if not function_address or not new_name:
+                log_error(f"RevEng.AI | Missing function address or name for rename")
+                failed_count += 1
+                return False, "Missing function address or name for rename"
+            
+            if rename_function_util(bv, function_address, new_name):
+                renamed_count += 1
+                log_info(f"RevEng.AI | Successfully renamed function at {function_address:x} to {new_name}")
+            else:
+                failed_count += 1
+                log_error(f"RevEng.AI | Failed to rename function at {function_address:x}")
                 
-            log_info(f"RevEng.AI | {success_message}")
-
-            return True, success_message
+            
+            message = f"Successfully renamed {renamed_count} functions"
+            if failed_count > 0:
+                message += f" ({failed_count} failed)"
+            
+            log_info(f"RevEng.AI | {message}")
+            return True, message
+            
         except Exception as e:
-            log_error(f"RevEng.AI | Error renaming functions: {str(e)}")
+            log_error(f"RevEng.AI | Error in function renaming: {str(e)}")
             return False, str(e)
-    
+
     def _process_data_type_batch(self, chunk: List[Dict]) -> List[Dict]:
         try:
-            log_info(f"RevEng.AI | Processing chunk of {len(chunk)} functions")
-            function_ids = set([result['nearest_neighbor_id'] for result in chunk])
-            RE_functions_data_types(function_ids=list(function_ids))
+            log_info(f"RevEng.AI | Processing data types batch of {len(chunk)} items")
+            
+            nearest_neighbor_ids = [item["nearest_neighbor_id"] for item in chunk]
+            
+            response = RE_functions_data_types(nearest_neighbor_ids)
+            
+            if response.status_code != 200:
+                log_error(f"RevEng.AI | Data types API call failed with status {response.status_code}")
+                return []
+            
+            data = response.json()
+            
+            if "status" in data and data["status"] == "processing":
+                poll_id = data.get("poll_id")
+                if poll_id:
+                    log_info(f"RevEng.AI | Polling for data types with ID: {poll_id}")
+                    
+                    max_attempts = 30
+                    for attempt in range(max_attempts):
+                        time.sleep(2)
+                        poll_response = RE_functions_data_types_poll(poll_id)
+                        
+                        if poll_response.status_code == 200:
+                            poll_data = poll_response.json()
+                            if poll_data.get("status") == "completed":
+                                data = poll_data
+                                break
+                        else:
+                            log_error(f"RevEng.AI | Polling failed with status {poll_response.status_code}")
+                            break
+                    else:
+                        log_error(f"RevEng.AI | Polling timed out after {max_attempts} attempts")
+                        return []
+            
             signatures = []
-            while True:
-                response = RE_functions_data_types_poll(    
-                    function_ids=list(function_ids),
-                ).json()
-                data = response.get("data", {})
-                total_count = data.get("total_count", 0)
-                total_data_types = data.get("total_data_types_count", 0)
-                items = data.get("items", [])
-                log_info(f"RevEng.AI | Response: {response}")
-                if total_count != total_data_types or all(item.get("completed", False) for item in items):
-                    break
-                time.sleep(1)
-
-            for item in items:
-                log_info(f"RevEng.AI | Item: {item['function_id']}")
-                for result in chunk:
-                    if result['nearest_neighbor_id'] == item['function_id']:
-                        signature = self.make_signature(item['data_types'])
-                        if signature != "N/A":
-                            signatures.append({"nearest_neighbor_id": result['nearest_neighbor_id'], "signature": signature})
-                        break
-
-            log_info(f"RevEng.AI | Total count: {total_count}")
-            log_info(f"RevEng.AI | Total data types: {total_data_types}")
-            log_info(f"RevEng.AI | Items: {items}")
-
+            for item in data.get("data", []):
+                signature = self.make_signature(item.get("data_types", []))
+                signatures.append({
+                    "nearest_neighbor_id": item["nearest_neighbor_id"],
+                    "signature": signature
+                })
+            
             return signatures
+            
         except Exception as e:
-            log_error(f"RevEng.AI | Error processing data type batch: {str(e)}")
+            log_error(f"RevEng.AI | Error processing data types batch: {str(e)}")
             return []
-        
+
     def make_signature(self, data_types: List[Dict]) -> str:
         try:
-            log_info(f"RevEng.AI | Making signature for {data_types}")
-            signature = ""
-            signature += f"{data_types['func_types'].get('name', 'N/A')} "
-
-            for dep in data_types['func_deps']:
-                signature += f"{dep.get('name', 'N/A')} "
-
-            log_info(f"RevEng.AI | Signature: {signature}")
-            return signature
+            if not data_types:
+                return "void function();"
+            
+            # For now, create a simple signature
+            # This would need to be enhanced based on actual data_types structure
+            return_type = "void"
+            params = []
+            
+            for dt in data_types:
+                if dt.get("type") == "return":
+                    return_type = dt.get("name", "void")
+                elif dt.get("type") == "parameter":
+                    param_type = dt.get("name", "int")
+                    param_name = dt.get("param_name", f"param{len(params)}")
+                    params.append(f"{param_type} {param_name}")
+            
+            params_str = ", ".join(params) if params else ""
+            return f"{return_type} function({params_str});"
+            
         except Exception as e:
-            log_error(f"RevEng.AI | Error making signature: {str(e)}")
-            return "N/A"
+            log_error(f"RevEng.AI | Error creating signature: {str(e)}")
+            return "void function();"
 
     def fetch_data_types(self, bv: BinaryView, selected_results: List[Dict]) -> Tuple[bool, Dict[str, Any]]:
+        """Fetch data types for selected function matches"""
         try:
-            log_info("RevEng.AI | Starting data type fetching")
+            log_info(f"RevEng.AI | Starting data type fetching for {len(selected_results)} functions")
             
-            if len(selected_results) == 0:
-                return False, "No valid functions selected"
-
+            # Process in chunks to avoid API limits
             chunk_size = 50
-            chunks = [selected_results[i:i + chunk_size] for i in range(0, len(selected_results), chunk_size)]
-
-            log_info(f"RevEng.AI | Processing {len(selected_results)} functions in {len(chunks)} chunks of size {chunk_size}")
-
-            signatures = []
+            all_signatures = []
             
-            with ThreadPoolExecutor(max_workers=4) as executor:
-                future_to_chunk = {
-                    executor.submit(self._process_data_type_batch, chunk): i
-                    for i, chunk in enumerate(chunks)
-                }
-
-                for future in as_completed(future_to_chunk):
-                    chunk_index = future_to_chunk[future]
-                    try:
-                        chunk = future.result()
-                        log_info(f"RevEng.AI | Chunk {chunk_index} completed")
-                        signatures.extend(chunk)
-        
-                    except Exception as e:
-                        log_error(f"RevEng.AI | Error processing chunk {chunk_index}: {str(e)}")
-
-            options = {
-                "success_count": len(signatures),
-                "signatures": signatures
+            for i in range(0, len(selected_results), chunk_size):
+                chunk = selected_results[i:i+chunk_size]
+                log_info(f"RevEng.AI | Processing chunk {i//chunk_size + 1}/{(len(selected_results) + chunk_size - 1)//chunk_size}")
+                
+                signatures = self._process_data_type_batch(chunk)
+                all_signatures.extend(signatures)
+            
+            success_count = len([s for s in all_signatures if s.get("signature") != "void function();"])
+            
+            log_info(f"RevEng.AI | Data type fetching completed. {success_count} functions have signatures")
+            
+            return True, {
+                "signatures": all_signatures,
+                "success_count": success_count
             }
-
-            return True, options
+            
         except Exception as e:
-            log_error(f"RevEng.AI | Error fetching data types: {str(e)}")
-            return False, str(e)
+            log_error(f"RevEng.AI | Error in data type fetching: {str(e)}")
+            return False, str(e) 

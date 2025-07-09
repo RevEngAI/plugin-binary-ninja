@@ -125,9 +125,9 @@ Use function matching to identify similar functions in other binaries or collect
 
 - Click `RevEng.AI > Match Functions`
 
-> 🖼️ *Insert screenshot of match functions result*
+<img src="./images/matchedfunctions.png" >
 
-Matched functions are displayed with similarity and metadata. You can navigate or rename based on the results.
+Matched functions are displayed based on the given confidence value. You can navigate or rename based on the results.
 
 ---
 

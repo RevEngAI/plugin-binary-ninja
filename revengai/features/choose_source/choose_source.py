@@ -1,8 +1,5 @@
-from binaryninja import BinaryView, log_info, log_error, Symbol, SymbolType
-from reait.api import RE_authentication, RE_search, RE_nearest_symbols_batch, RE_analyze_functions
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import List, Dict, Tuple
-import math
+from binaryninja import BinaryView, log_info, log_error
+from reait.api import RE_search
 
 class ChooseSource:
     def __init__(self, config):
@@ -15,15 +12,15 @@ class ChooseSource:
             binary_id = self.config.get_binary_id(bv)
             if binary_id == new_binary_id:
                 log_info("RevEng.AI | Binary ID is already set to the chosen one.")
-                return True
+                return True, "Binary ID is already set to the chosen one."
             
             log_info(f"RevEng.AI | Changing Binary ID: {binary_id} to {new_binary_id}")
             self.config.set_current_info(new_binary_id)
 
-            return True
+            return True, "Binary ID changed successfully."
         except Exception as e:
             log_error(f"RevEng.AI | Failed to choose source: {str(e)}")
-            return False
+            return False, str(e)
 
     def get_analysis(self, bv: BinaryView):
         try:
@@ -46,7 +43,7 @@ class ChooseSource:
                 else:
                     options.append(option)
 
-            return options
+            return True, options
         except Exception as e:
             log_error(f"RevEng.AI | Failed to get analysis: {str(e)}")
-            return []
+            return False, str(e)

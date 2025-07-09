@@ -1,14 +1,12 @@
-from binaryninja import BinaryView, PluginCommand, log_info, log_error
+from binaryninja import log_error
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, 
-                             QPushButton, QLabel, QCheckBox, 
-                             QGroupBox, QRadioButton, QSpacerItem,
-                             QSizePolicy)
+                             QPushButton, QLabel)
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QPixmap, QIcon
+from PySide6.QtGui import QPixmap
 from PySide6.QtCore import QCoreApplication
 from PySide6.QtWidgets import QMessageBox
 from revengai.utils import create_progress_dialog
-from .auto_unstrip_thread import AutoUnstripThread
+from revengai.utils.data_thread import DataThread
 import os
 
 class AutoUnstripDialog(QDialog):
@@ -38,9 +36,7 @@ class AutoUnstripDialog(QDialog):
         info_layout = QVBoxLayout()
         title_label = QLabel("Auto Unstrip Binary")
         title_label.setStyleSheet("font-size: 18px; font-weight: bold;")
-        description_label = QLabel(
-            "Using official RevEng.AI sources, function names will be recovered based on a high similarity and confidence threshold and limited to available debug symbols.\nFunctions will be renamed automatically for easier analysis.\n\nThis process may take several minutes depending on the binary size."
-        )
+        description_label = QLabel("Using official RevEng.AI sources, function names will be recovered based on a high similarity and confidence threshold and limited to available debug symbols.\nFunctions will be renamed automatically for easier analysis.\n\nThis process may take several minutes depending on the binary size.")
         description_label.setWordWrap(True)
         info_layout.addWidget(title_label)
         info_layout.addWidget(description_label)
@@ -49,7 +45,6 @@ class AutoUnstripDialog(QDialog):
         layout.addLayout(header_layout)
         layout.addSpacing(20)
 
-        # Buttons
         button_layout = QHBoxLayout()
         self.save_button = QPushButton("Auto Unstrip")
         self.save_button.setStyleSheet("""
@@ -76,40 +71,24 @@ class AutoUnstripDialog(QDialog):
         button_layout.addWidget(self.save_button)
         button_layout.addWidget(self.cancel_button)
         layout.addLayout(button_layout)
-
         self.setLayout(layout)
 
     def _auto_unstrip(self):
-        log_info("RevEng.AI | Auto Unstripping binary")
-        # Create and show progress dialog using utility function
         self.progress = create_progress_dialog(self, "RevEng.AI Auto Unstrip", "Auto Unstripping binary...")
+        self.progress.show()
+        QCoreApplication.processEvents()   
         
-        # Create and start upload thread
-        self.auto_unstrip_thread = AutoUnstripThread(self.auto_unstrip, self.bv)
+        self.auto_unstrip_thread = DataThread(self.auto_unstrip.auto_unstrip, self.bv)
         self.auto_unstrip_thread.finished.connect(self._on_auto_unstrip_finished)
         self.auto_unstrip_thread.start()
-        
-        self.progress.show()
-        QCoreApplication.processEvents()    
-        
 
     def _on_auto_unstrip_finished(self, success, message):
-        """Handle auto unstrip completion"""
         self.progress.close()
         
         if success:
-            QMessageBox.information(
-                self,
-                "RevEng.AI Auto Unstrip",
-                f"Binary auto unstripped successfully!\n{message}",
-                QMessageBox.Ok
-            )
+            QMessageBox.information(self, "RevEng.AI Auto Unstrip", f"Binary auto unstripped successfully!\n{message}", QMessageBox.Ok)
             self.accept()
         else:
             log_error(f"RevEng.AI | Failed to auto unstrip binary: {message}")
-            QMessageBox.critical(
-                self,
-                "RevEng.AI Auto Unstrip Error",
-                f"Failed to auto unstrip binary: {message}",
-                QMessageBox.Ok
-            ) 
+            QMessageBox.critical(self, "RevEng.AI Auto Unstrip Error", f"Failed to auto unstrip binary: {message}", QMessageBox.Ok)
+            self.reject()

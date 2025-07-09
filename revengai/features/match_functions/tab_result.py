@@ -1,11 +1,8 @@
-from binaryninja import log_info, log_error
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
-                             QLabel, QLineEdit, QTableWidget, QTableWidgetItem,
-                             QHeaderView, QGroupBox, QSlider, QCheckBox, QMessageBox)
-from PySide6.QtCore import Qt, QCoreApplication
+from PySide6.QtWidgets import (QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem,
+                             QHeaderView, QAbstractItemView, QLineEdit, QLabel)
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
-from revengai.utils import create_progress_dialog
-from revengai.utils.data_thread import DataThread
+from binaryninja import log_info
 
 class ResultTab(QWidget):
 
@@ -14,10 +11,6 @@ class ResultTab(QWidget):
         self.match_functions = match_functions
         self.bv = bv
         self.status_label = status_label
-        self.columns = [
-            "Successful", "Original Function Name", "Matched Function Name", 
-            "Signature", "Matched Binary", "Similarity", "Confidence", "Error"
-        ]
         self.current_matches = []
         self.selected_results = []
         self.match_thread = None
@@ -28,11 +21,20 @@ class ResultTab(QWidget):
         self._build_result_section()
 
     def _build_result_section(self):
-        layout = QVBoxLayout()      
+        layout = QVBoxLayout()   
+
+        self.search_bar = QLineEdit()
+        self.search_bar.setPlaceholderText("Search results")
+        self.search_bar.textChanged.connect(self.filter_results)
+        layout.addWidget(self.search_bar)
 
         self.results_table = QTableWidget()
         self.results_table.setColumnCount(8)
-        self.results_table.setHorizontalHeaderLabels(self.columns)
+        self.results_table.setHorizontalHeaderLabels([
+            "Successful", "Original Function Name", "Matched Function Name", 
+            "Signature", "Matched Binary", "Similarity", "Confidence", "Error"
+        ])
+        self.results_table.setSelectionMode(QAbstractItemView.NoSelection)
         
         header = self.results_table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
@@ -47,14 +49,26 @@ class ResultTab(QWidget):
         self.results_table.setAlternatingRowColors(True)
         self.results_table.verticalHeader().setVisible(False)
         #self.results_table.itemSelectionChanged.connect(self.on_result_selection_changed)
-        
         layout.addWidget(self.results_table)
 
+        self.status_label = QLabel("No results yet")
+        layout.addWidget(self.status_label)
+
         self.layout.addLayout(layout)
-    
+
+    def filter_results(self, text):
+        log_info(f"RevEng.AI | Filtering results: {text}")
+        for row in range(self.results_table.rowCount()):
+            self.results_table.setRowHidden(row, True)
+            for col in range(self.results_table.columnCount()):
+                item = self.results_table.item(row, col)
+                if item:
+                    if text.lower() in item.text().lower():
+                        log_info(f"RevEng.AI | Filtering results: {item.text()}")
+                        self.results_table.setRowHidden(row, False)
+                        break
+
     def populate_results_table(self):
-        """Populate the results table with function matches"""
-        # Clear previous selections
         self.selected_results.clear()
         
         self.results_table.setRowCount(len(self.current_matches))
@@ -66,7 +80,6 @@ class ResultTab(QWidget):
             icon_item.setIcon(QIcon(icon_path))
             icon_item.setText(icon_text)
             icon_item.setFlags(icon_item.flags() & ~Qt.ItemIsEditable)
-            icon_item.setData(Qt.UserRole, match)
             self.results_table.setItem(row, 0, icon_item)
 
             column_data = [
@@ -77,15 +90,14 @@ class ResultTab(QWidget):
                 "similarity",
                 "confidence",
                 "error"
-            ]
-            
-            # Create and set items for each column
+            ] 
+
             for column, field in enumerate(column_data, start=1):
-                item = QTableWidgetItem(match.get(field, "N/A"))
+                value = match.get(field, "N/A")
+                item = QTableWidgetItem(value if len(value) < 25 else value[:22] + "...")
                 item.setFlags(item.flags() & ~Qt.ItemIsEditable)
                 self.results_table.setItem(row, column, item)
             
-            # Auto-select successful results
             if icon_text == "Success":
                 self.selected_results.append(match)
 
