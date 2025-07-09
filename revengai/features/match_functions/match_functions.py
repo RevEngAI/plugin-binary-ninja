@@ -140,9 +140,9 @@ class MatchFunctions:
                 raise Exception("Analysis not found. Please choose one using 'Choose Source' feature.")
             
             analyzed_functions = RE_analyze_functions(self.path, binary_id).json()["functions"]
-            function_ids = [func["function_id"] for func in analyzed_functions]
+            function_ids = []
 
-            log_info(f"RevEng.AI | Found {len(function_ids)} functions to match")
+            log_info(f"RevEng.AI | Found {len(analyzed_functions)} analyzed functions")
 
             functions = bv.functions
             len_functions = len(functions)
