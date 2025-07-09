@@ -101,8 +101,9 @@ class MatchFunctions:
                                 line["icon_text"] = "Success"
                                 matched_count += 1
                                 break
-                    
-                    lines.append(line)
+                            
+                    if line not in lines:
+                        lines.append(line)
                     
                 except Exception as e:
                     log_error(f"RevEng.AI | Error processing function {result['origin_function_id']}: {str(e)}")
@@ -206,8 +207,13 @@ class MatchFunctions:
                     return float(item["confidence"].strip('%'))
                 except (KeyError, ValueError):
                     return 0.0
-
+            
+            #sorted_list = sorted(result["data"], key=lambda x: int(x["function_address"]) if x["function_address"] != "N/A" else 0)
             sorted_list = sorted(result["data"], key=parse_confidence, reverse=True)
+
+            #seen = {}
+            #sorted_list = [seen.setdefault(str(x), x) for x in sorted_list if str(x) not in seen]
+
             result["data"] = sorted_list
             
             return True, result
@@ -374,9 +380,9 @@ class MatchFunctions:
                 total_data_types = data.get("total_data_types_count", 0)
                 items = data.get("items", [])
                 log_info(f"RevEng.AI | Response: {response}")
-                if total_count != total_data_types or all(item.get("completed", False) for item in items):
+                if not any(item.get("status") == "pending" for item in items):
                     break
-                time.sleep(1)
+                time.sleep(3)
 
             for item in items:
                 log_info(f"RevEng.AI | Item: {item['function_id']}")
@@ -400,10 +406,10 @@ class MatchFunctions:
         try:
             log_info(f"RevEng.AI | Making signature for {data_types}")
             signature = ""
-            signature += f"{data_types['func_types'].get('name', 'N/A')} "
+            signature += f"{data_types['func_types'].get('type', 'N/A')} "
 
-            for dep in data_types['func_deps']:
-                signature += f"{dep.get('name', 'N/A')} "
+            for arg in data_types['func_types'].get('args', []):
+                signature += f"{arg.get('type', 'N/A')}, "
 
             log_info(f"RevEng.AI | Signature: {signature}")
             return signature
