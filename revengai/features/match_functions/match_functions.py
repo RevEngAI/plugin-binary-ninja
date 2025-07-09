@@ -371,21 +371,23 @@ class MatchFunctions:
             function_ids = set([result['nearest_neighbor_id'] for result in chunk])
             RE_functions_data_types(function_ids=list(function_ids))
             signatures = []
+            items = []
             while True:
                 response = RE_functions_data_types_poll(    
                     function_ids=list(function_ids),
                 ).json()
                 data = response.get("data", {})
-                total_count = data.get("total_count", 0)
-                total_data_types = data.get("total_data_types_count", 0)
                 items = data.get("items", [])
-                log_info(f"RevEng.AI | Response: {response}")
-                if not any(item.get("status") == "pending" for item in items):
+                pending_count = sum(1 for item in items if item.get("status") == "pending")
+                log_info(f"RevEng.AI | {pending_count} items still pending... trying again")
+                if not pending_count:
                     break
                 time.sleep(3)
 
             for item in items:
                 log_info(f"RevEng.AI | Item: {item['function_id']}")
+                if item['status'] != "completed":
+                    continue
                 for result in chunk:
                     if result['nearest_neighbor_id'] == item['function_id']:
                         signature = self.make_signature(item['data_types'])
@@ -393,9 +395,9 @@ class MatchFunctions:
                             signatures.append({"nearest_neighbor_id": result['nearest_neighbor_id'], "signature": signature})
                         break
 
-            log_info(f"RevEng.AI | Total count: {total_count}")
-            log_info(f"RevEng.AI | Total data types: {total_data_types}")
-            log_info(f"RevEng.AI | Items: {items}")
+            #log_info(f"RevEng.AI | Total count: {total_count}")
+            #log_info(f"RevEng.AI | Total data types: {total_data_types}")
+            #log_info(f"RevEng.AI | Items: {items}")
 
             return signatures
         except Exception as e:
@@ -404,12 +406,14 @@ class MatchFunctions:
         
     def make_signature(self, data_types: List[Dict]) -> str:
         try:
-            log_info(f"RevEng.AI | Making signature for {data_types}")
-            signature = ""
-            signature += f"{data_types['func_types'].get('type', 'N/A')} "
-
-            for arg in data_types['func_types'].get('args', []):
+            #log_info(f"RevEng.AI | Making signature for {data_types}")
+            signature = "("
+            for _, arg in data_types['func_types'].get('header', {}).get('args', {}).items():
+                #log_info(f"RevEng.AI | Arg: {arg}")
                 signature += f"{arg.get('type', 'N/A')}, "
+            signature = signature[:-2] if signature.endswith(", ") else signature
+
+            signature += f") {data_types['func_types'].get('type', 'N/A')}"
 
             log_info(f"RevEng.AI | Signature: {signature}")
             return signature
@@ -425,7 +429,10 @@ class MatchFunctions:
                 return False, "No valid functions selected"
 
             chunk_size = 50
-            chunks = [selected_results[i:i + chunk_size] for i in range(0, len(selected_results), chunk_size)]
+            if len(selected_results) < chunk_size:
+                chunks = [selected_results]
+            else:
+                chunks = [selected_results[i:i + chunk_size] for i in range(0, len(selected_results), chunk_size)]
 
             log_info(f"RevEng.AI | Processing {len(selected_results)} functions in {len(chunks)} chunks of size {chunk_size}")
 

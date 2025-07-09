@@ -305,7 +305,7 @@ class MatchCurrentFunctionDialog(QDialog):
         if success:
             log_info(f"RevEng.AI | Data type fetching completed with {data['success_count']} functions having signatures")
             self.results_tab.update_current_matches_with_signatures(data["signatures"])
-            self.results_tab.populate_results_table()
+            #self.results_tab.populate_results_table()
             self.status_label.setText(f"Data type fetching completed: {data['success_count']} functions have signatures")
 
             QMessageBox.information(

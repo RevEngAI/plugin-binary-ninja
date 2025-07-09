@@ -342,104 +342,100 @@ class MatchCurrentFunction:
 
     def _process_data_type_batch(self, chunk: List[Dict]) -> List[Dict]:
         try:
-            log_info(f"RevEng.AI | Processing data types batch of {len(chunk)} items")
-            
-            nearest_neighbor_ids = [item["nearest_neighbor_id"] for item in chunk]
-            
-            response = RE_functions_data_types(nearest_neighbor_ids)
-            
-            if response.status_code != 200:
-                log_error(f"RevEng.AI | Data types API call failed with status {response.status_code}")
-                return []
-            
-            data = response.json()
-            
-            if "status" in data and data["status"] == "processing":
-                poll_id = data.get("poll_id")
-                if poll_id:
-                    log_info(f"RevEng.AI | Polling for data types with ID: {poll_id}")
-                    
-                    max_attempts = 30
-                    for attempt in range(max_attempts):
-                        time.sleep(2)
-                        poll_response = RE_functions_data_types_poll(poll_id)
-                        
-                        if poll_response.status_code == 200:
-                            poll_data = poll_response.json()
-                            if poll_data.get("status") == "completed":
-                                data = poll_data
-                                break
-                        else:
-                            log_error(f"RevEng.AI | Polling failed with status {poll_response.status_code}")
-                            break
-                    else:
-                        log_error(f"RevEng.AI | Polling timed out after {max_attempts} attempts")
-                        return []
-            
+            log_info(f"RevEng.AI | Processing chunk of {len(chunk)} functions")
+            function_ids = set([result['nearest_neighbor_id'] for result in chunk])
+            RE_functions_data_types(function_ids=list(function_ids))
             signatures = []
-            for item in data.get("data", []):
-                signature = self.make_signature(item.get("data_types", []))
-                signatures.append({
-                    "nearest_neighbor_id": item["nearest_neighbor_id"],
-                    "signature": signature
-                })
-            
-            return signatures
-            
-        except Exception as e:
-            log_error(f"RevEng.AI | Error processing data types batch: {str(e)}")
-            return []
+            items = []
+            while True:
+                response = RE_functions_data_types_poll(    
+                    function_ids=list(function_ids),
+                ).json()
+                data = response.get("data", {})
+                items = data.get("items", [])
+                
+                pending_count = sum(1 for item in items if item.get("status") == "pending")
+                log_info(f"RevEng.AI | {pending_count} items still pending... trying again")
+                if not pending_count:
+                    break
+                time.sleep(3)
 
+            for item in items:
+                log_info(f"RevEng.AI | Item: {item['function_id']}")
+                if item['status'] != "completed":
+                    continue
+                for result in chunk:
+                    if result['nearest_neighbor_id'] == item['function_id']:
+                        signature = self.make_signature(item['data_types'])
+                        if signature != "N/A":
+                            signatures.append({"nearest_neighbor_id": result['nearest_neighbor_id'], "signature": signature})
+                        break
+
+            #log_info(f"RevEng.AI | Total count: {total_count}")
+            #log_info(f"RevEng.AI | Total data types: {total_data_types}")
+            #log_info(f"RevEng.AI | Items: {items}")
+
+            return signatures
+        except Exception as e:
+            log_error(f"RevEng.AI | Error processing data type batch: {str(e)}")
+            return []
+        
     def make_signature(self, data_types: List[Dict]) -> str:
         try:
-            if not data_types:
-                return "void function();"
-            
-            # For now, create a simple signature
-            # This would need to be enhanced based on actual data_types structure
-            return_type = "void"
-            params = []
-            
-            for dt in data_types:
-                if dt.get("type") == "return":
-                    return_type = dt.get("name", "void")
-                elif dt.get("type") == "parameter":
-                    param_type = dt.get("name", "int")
-                    param_name = dt.get("param_name", f"param{len(params)}")
-                    params.append(f"{param_type} {param_name}")
-            
-            params_str = ", ".join(params) if params else ""
-            return f"{return_type} function({params_str});"
-            
+            #log_info(f"RevEng.AI | Making signature for {data_types}")
+            signature = "("
+            for _, arg in data_types['func_types'].get('header', {}).get('args', {}).items():
+                #log_info(f"RevEng.AI | Arg: {arg}")
+                signature += f"{arg.get('type', 'N/A')}, "
+            signature = signature[:-2] if signature.endswith(", ") else signature
+
+            signature += f") {data_types['func_types'].get('type', 'N/A')}"
+
+            log_info(f"RevEng.AI | Signature: {signature}")
+            return signature
         except Exception as e:
-            log_error(f"RevEng.AI | Error creating signature: {str(e)}")
-            return "void function();"
+            log_error(f"RevEng.AI | Error making signature: {str(e)}")
+            return "N/A"
 
     def fetch_data_types(self, bv: BinaryView, selected_results: List[Dict]) -> Tuple[bool, Dict[str, Any]]:
-        """Fetch data types for selected function matches"""
         try:
-            log_info(f"RevEng.AI | Starting data type fetching for {len(selected_results)} functions")
+            log_info("RevEng.AI | Starting data type fetching")
             
-            # Process in chunks to avoid API limits
+            if len(selected_results) == 0:
+                return False, "No valid functions selected"
+
             chunk_size = 50
-            all_signatures = []
+            if len(selected_results) < chunk_size:
+                chunks = [selected_results]
+            else:
+                chunks = [selected_results[i:i + chunk_size] for i in range(0, len(selected_results), chunk_size)]
+
+            log_info(f"RevEng.AI | Processing {len(selected_results)} functions in {len(chunks)} chunks of size {chunk_size}")
+
+            signatures = []
             
-            for i in range(0, len(selected_results), chunk_size):
-                chunk = selected_results[i:i+chunk_size]
-                log_info(f"RevEng.AI | Processing chunk {i//chunk_size + 1}/{(len(selected_results) + chunk_size - 1)//chunk_size}")
-                
-                signatures = self._process_data_type_batch(chunk)
-                all_signatures.extend(signatures)
-            
-            success_count = len([s for s in all_signatures if s.get("signature") != "void function();"])
-            
-            log_info(f"RevEng.AI | Data type fetching completed. {success_count} functions have signatures")
-            
-            return True, {
-                "signatures": all_signatures,
-                "success_count": success_count
+            with ThreadPoolExecutor(max_workers=4) as executor:
+                future_to_chunk = {
+                    executor.submit(self._process_data_type_batch, chunk): i
+                    for i, chunk in enumerate(chunks)
+                }
+
+                for future in as_completed(future_to_chunk):
+                    chunk_index = future_to_chunk[future]
+                    try:
+                        chunk = future.result()
+                        log_info(f"RevEng.AI | Chunk {chunk_index} completed")
+                        signatures.extend(chunk)
+        
+                    except Exception as e:
+                        log_error(f"RevEng.AI | Error processing chunk {chunk_index}: {str(e)}")
+
+            options = {
+                "success_count": len(signatures),
+                "signatures": signatures
             }
-            
+
+            return True, options
         except Exception as e:
-            log_error(f"RevEng.AI | Error in data type fetching: {str(e)}")
-            return False, str(e) 
+            log_error(f"RevEng.AI | Error fetching data types: {str(e)}")
+            return False, str(e)

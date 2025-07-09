@@ -71,6 +71,7 @@ class ResultTab(QWidget):
     def populate_results_table(self):
         self.selected_results.clear()
         
+        self.results_table.setRowCount(0)
         self.results_table.setRowCount(len(self.current_matches))
         
         for row, match in enumerate(self.current_matches):
@@ -94,7 +95,9 @@ class ResultTab(QWidget):
 
             for column, field in enumerate(column_data, start=1):
                 value = match.get(field, "N/A")
-                item = QTableWidgetItem(value if len(value) < 25 else value[:22] + "...")
+                if field != "signature":
+                    value = value if len(value) < 25 else value[:22] + "..."
+                item = QTableWidgetItem(value)
                 item.setFlags(item.flags() & ~Qt.ItemIsEditable)
                 self.results_table.setItem(row, column, item)
             
@@ -102,11 +105,15 @@ class ResultTab(QWidget):
                 self.selected_results.append(match)
 
     def update_current_matches_with_signatures(self, selected_results):
+        log_info(f"RevEng.AI | Updating current matches with signatures")
         for match in self.current_matches:
-            if match.get("nearest_neighbor_id", False):
+            if not match.get("nearest_neighbor_id", False):
                 continue
             for result in selected_results:
+                if not result.get("nearest_neighbor_id", False):
+                    continue
                 if match["nearest_neighbor_id"] == result["nearest_neighbor_id"]:
+                    log_info(f"RevEng.AI | Found signature for {match['original_name']}")
                     match["signature"] = result["signature"]
                     break
         self.populate_results_table()

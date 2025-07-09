@@ -230,7 +230,7 @@ class MatchFunctionsDialog(QDialog):
         if success:
             log_info(f"RevEng.AI | Data type fetching completed with {data['success_count']} functions having signatures")
             self.results_tab.update_current_matches_with_signatures(data["signatures"])
-            self.results_tab.populate_results_table()
+            #self.results_tab.populate_results_table()
             self.status_label.setText(f"Data type fetching completed!")
             self.results_tab.status_label.setText(f"Data type fetching completed: {data['success_count']} functions have signatures")
             QMessageBox.information(self, "RevEng.AI Fetch Data Types", f"Data types fetched successfully.\n{data['success_count']} function{'' if data['success_count'] == 1 else 's'} have signatures.", QMessageBox.Ok)
