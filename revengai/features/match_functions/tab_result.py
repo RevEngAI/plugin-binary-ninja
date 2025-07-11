@@ -115,5 +115,7 @@ class ResultTab(QWidget):
                 if match["nearest_neighbor_id"] == result["nearest_neighbor_id"]:
                     log_info(f"RevEng.AI | Found signature for {match['original_name']}")
                     match["signature"] = result["signature"]
+                    match["data_types"] = result["data_types"]
+                    match["signature_data"] = result["signature_data"]
                     break
         self.populate_results_table()

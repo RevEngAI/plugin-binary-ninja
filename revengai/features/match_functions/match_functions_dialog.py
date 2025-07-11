@@ -77,8 +77,9 @@ class MatchFunctionsDialog(QDialog):
         self.fetch_results_button = QPushButton("Fetch Results")
         self.fetch_data_types_button = QPushButton("Fetch Data Types")
         self.rename_selected_button = QPushButton("Rename Selected")
+        self.test_button = QPushButton("Test")
         
-        for button in [self.fetch_results_button, self.fetch_data_types_button, self.rename_selected_button]:
+        for button in [self.fetch_results_button, self.fetch_data_types_button, self.rename_selected_button, self.test_button]:
             button.setStyleSheet("""
                 QPushButton {
                     background-color: #6c757d;
@@ -94,7 +95,8 @@ class MatchFunctionsDialog(QDialog):
         self.fetch_results_button.clicked.connect(self.start_matching)
         self.fetch_data_types_button.clicked.connect(self.start_fetching_data_types)
         self.rename_selected_button.clicked.connect(self.start_renaming)
-
+        self.test_button.clicked.connect(self.start_test)
+        
         for button in [self.fetch_data_types_button, self.rename_selected_button]:
             button.setEnabled(False)
             button.setStyleSheet("""
@@ -109,9 +111,33 @@ class MatchFunctionsDialog(QDialog):
         buttons_layout.addWidget(self.fetch_results_button)
         buttons_layout.addWidget(self.fetch_data_types_button)
         buttons_layout.addWidget(self.rename_selected_button)
+        buttons_layout.addWidget(self.test_button)
         
         footer_layout.addLayout(buttons_layout)
         return footer_layout
+
+    def start_test(self):
+        log_info("RevEng.AI | Starting test process")
+        
+        self.progress = create_progress_dialog(self, "RevEng.AI Test", "Testing...")
+        self.progress.show()
+        QCoreApplication.processEvents() 
+        self.status_label.setText("Testing...")
+
+        self.test_thread = DataThread(self.match_functions.test, self.bv, self.results_tab.selected_results)
+        self.test_thread.finished.connect(self.on_test_finished)
+        self.test_thread.start()
+
+    def on_test_finished(self, success, data):
+        self.progress.close()
+        
+        if success:
+            log_info(f"RevEng.AI | Test completed: {data}")
+            QMessageBox.information(self, "RevEng.AI Test", f"{data}", QMessageBox.Ok)
+        else:
+            log_error(f"RevEng.AI | Test failed: {data}")
+            self.status_label.setText(f"Test failed: {data}")
+            QMessageBox.critical(self, "RevEng.AI Test Error", f"Failed to test:\n{data}", QMessageBox.Ok)
 
     def start_matching(self):
         confidence_threshold = self.confidenceSlider.value()

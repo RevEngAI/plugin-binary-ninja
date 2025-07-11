@@ -95,6 +95,7 @@ class ResultTab(QWidget):
     def populate_results_table(self):
         """Populate the results table with function matches"""
         self.selected_result = {}
+        self.results_table.setRowCount(0)
         self.results_table.setRowCount(len(self.current_matches))
         
         # Safely disconnect existing connections

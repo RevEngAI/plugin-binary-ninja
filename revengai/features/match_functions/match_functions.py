@@ -5,8 +5,20 @@ from datetime import datetime
 import os
 import re
 import time
+from libbs.artifacts import _art_from_dict
+from libbs.api import DecompilerInterface
+from libbs.decompilers.binja.interface import BinjaInterface as BNInterface
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from revengai.utils import rename_function as rename_function_util
+from libbs.artifacts import (
+    Function,
+    FunctionArgument,
+    GlobalVariable,
+    Enum,
+    Struct,
+    Typedef,
+)
+#from revengai.utils.datatypes import apply_types, apply_type, _load_many_artifacts_from_list
 
 class MatchFunctions:
     def __init__(self, config):
@@ -379,7 +391,7 @@ class MatchFunctions:
                 data = response.get("data", {})
                 items = data.get("items", [])
                 pending_count = sum(1 for item in items if item.get("status") == "pending")
-                log_info(f"RevEng.AI | {pending_count} items still pending... trying again")
+                log_info(f"RevEng.AI | {pending_count} items still pending...")
                 if not pending_count:
                     break
                 time.sleep(3)
@@ -390,9 +402,20 @@ class MatchFunctions:
                     continue
                 for result in chunk:
                     if result['nearest_neighbor_id'] == item['function_id']:
-                        signature = self.make_signature(item['data_types'])
-                        if signature != "N/A":
-                            signatures.append({"nearest_neighbor_id": result['nearest_neighbor_id'], "signature": signature})
+                        signature = "N/A"
+                        item2 = item.get("data_types", {})
+                        func_types = item2.get("func_types", None)
+                        func_deps = item2.get("func_deps", [])
+                        log_info(f"RevEng.AI | Func types: {func_types}")
+                        if func_types is not None:
+                            fnc: Function = _art_from_dict(func_types)
+                            if fnc.name is None:
+                                log_info(f"Function {item['function_id']} has no name, skipping signature application.")
+                                continue
+                            log_info(f"Applying signature for {fnc.name}")
+                            signature = self.function_to_str(fnc)
+                            if signature != "N/A":
+                                signatures.append({"nearest_neighbor_id": result['nearest_neighbor_id'], "signature": signature, "data_types": item['data_types'], "signature_data": {"deps": func_deps, "function": fnc}})
                         break
 
             #log_info(f"RevEng.AI | Total count: {total_count}")
@@ -403,6 +426,22 @@ class MatchFunctions:
         except Exception as e:
             log_error(f"RevEng.AI | Error processing data type batch: {str(e)}")
             return []
+        
+    def function_arguments(self, fnc: Function) -> list[str]:
+        args = []
+        for k in fnc.header.args:
+            arg: FunctionArgument = fnc.header.args[k]
+            args.append(
+                f"{arg.type} {arg.name}"
+            )
+        return args
+
+
+    def function_to_str(self, fnc: Function) -> str:
+        # convert the signature to a string representation
+        return f"{fnc.type} {fnc.name}"\
+            f"({', '.join(self.function_arguments(fnc))})"
+
         
     def make_signature(self, data_types: List[Dict]) -> str:
         try:
@@ -463,3 +502,122 @@ class MatchFunctions:
         except Exception as e:
             log_error(f"RevEng.AI | Error fetching data types: {str(e)}")
             return False, str(e)
+
+    def test(self, bv: BinaryView, selected_results: List[Dict]) -> Tuple[bool, Dict[str, Any]]:
+        try:
+            log_info("RevEng.AI | Starting test")
+
+            decompiler = DecompilerInterface.discover(force_decompiler="binja")
+
+            log_info(f"RevEng.AI | Decompiler: {decompiler}")
+            log_info(f"RevEng.AI | Type: {type(decompiler)}")
+
+            for addr, func in decompiler.functions.items():
+                log_info(f"RevEng.AI | {addr}: {func}")
+
+
+            log_info(f"RevEng.AI | Decompiler: {decompiler}")
+            for result in selected_results:
+                if result.get('signature_data', None) is not None:
+                    log_info(f"RevEng.AI | Testing 0x{result['function_address']:x}")
+                    self._apply_data_types(result['function_address'], result['signature_data'], decompiler)
+
+
+
+            return True, "Test completed"
+        except Exception as e:
+            log_error(f"RevEng.AI | Error testing: {str(e)}")
+            return False, str(e)
+        
+    def _apply_type(
+        self,
+        deci: DecompilerInterface,
+        artifact,
+        soft_skip=False
+    ) -> None | str:
+        supported_types = [
+            Function,
+            GlobalVariable,
+            Enum,
+            Struct,
+            Typedef
+        ]
+
+        if not any(isinstance(artifact, t) for t in supported_types):
+            return "Unsupported artifact type: " \
+                f"{artifact.__class__.__name__}"
+
+        try:
+            log_info(f"RevEng.AI | Applying artifact: {artifact.name}")
+            log_info(f"RevEng.AI | Artifact type: {artifact.__class__.__name__}")
+            log_info(f"RevEng.AI | Artifact Name: {artifact.name}")
+            log_info(f"RevEng.AI | Decompiler: {deci}")
+            if isinstance(artifact, Function):
+                deci.functions[artifact.addr] = artifact
+            elif isinstance(artifact, GlobalVariable):
+                deci.global_vars[artifact.addr] = artifact
+            elif isinstance(artifact, Enum):
+                deci.enums[artifact.name] = artifact
+            elif isinstance(artifact, Struct):
+                deci.structs[artifact.name] = artifact
+            elif isinstance(artifact, Typedef):
+                deci.typedefs[artifact.name] = artifact
+
+            
+            
+        except Exception as e:
+            log_error(f"Error while applying artifact '{artifact.name}'"
+                        f" of type {artifact.__class__.__name__}: {e}")
+            if not soft_skip:
+                return f"Error while applying artifact '{artifact.name}'"\
+                    f" of type {artifact.__class__.__name__}: {e}"
+
+        return None
+        
+    def _apply_types(self, deci: DecompilerInterface, artifacts: List) -> None | str:
+            for artifact in artifacts:
+                error = self._apply_type(deci, artifact, True)
+                if error is not None:
+                    return error
+            return None
+    
+    def _load_many_artifacts_from_list(self, artifacts: list[dict]) -> list:
+        _artifacts = []
+        for artifact in artifacts:
+            art = _art_from_dict(artifact)
+            if art is not None:
+                _artifacts.append(art)
+        return _artifacts
+        
+    def _apply_data_types(self, function_addr: int = 0,
+        signature=None,
+        deci: DecompilerInterface = None,) -> None:
+        if not deci:
+            log_error("RevEng.AI | Unable to find a decompiler")
+            return
+
+        try:
+            # get the function signature from the table
+            function: Function = signature.get("function")
+            deps = signature.get("deps")
+
+            function.addr = function_addr
+
+            # fisrt apply the dependencies
+            res = self._apply_types(deci, self._load_many_artifacts_from_list(deps))
+            if res is not None:
+                log_error(
+                    f"Failed to apply function dependencies: {res}")
+                return
+
+            # then apply the function signature
+            res = self._apply_type(deci, function)
+            if res is not None:
+                log_error(f"Failed to apply function signature: {res}")
+                return
+
+            # show success message
+            log_info("Successfully applied function signature and dependencies")
+
+        except Exception as e:
+            log_error(f"Error: {e}")
