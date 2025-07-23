@@ -85,7 +85,7 @@ class ResultTab(QWidget):
 
             column_data = [
                 "original_name",
-                "matched_name",
+                "demangled_name",
                 "signature",
                 "matched_binary",
                 "similarity",

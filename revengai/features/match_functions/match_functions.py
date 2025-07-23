@@ -7,9 +7,10 @@ import re
 import time
 from libbs.artifacts import _art_from_dict
 from libbs.api import DecompilerInterface
-from libbs.decompilers.binja.interface import BinjaInterface as BNInterface
+from libbs.decompilers.binja.interface import BinjaInterface 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from revengai.utils import rename_function as rename_function_util
+from revengai.utils import apply_data_types as apply_data_types_util
 from libbs.artifacts import (
     Function,
     FunctionArgument,
@@ -71,6 +72,7 @@ class MatchFunctions:
                         "icon_path": f"{os.path.dirname(__file__)}/../../images/failed.png",
                         "icon_text": "Failed",
                         "original_name": "N/A",
+                        "demangled_name": result['nearest_neighbor_function_name'] if result['nearest_neighbor_function_name'] else result['nearest_neighbor_function_name_mangled'],
                         "matched_name": result['nearest_neighbor_function_name_mangled'] if result['nearest_neighbor_function_name_mangled'] else result['nearest_neighbor_function_name'],
                         "signature": "N/A",
                         "matched_binary": result['nearest_neighbor_binary_name'],
@@ -175,6 +177,7 @@ class MatchFunctions:
                         "icon_path": f"{os.path.dirname(__file__)}/../../images/failed.png",
                         "icon_text": "Failed",
                         "original_name": function.name,
+                        "demangled_name": "N/A",
                         "matched_name": "N/A",
                         "signature": "N/A",
                         "matched_binary": "N/A",
@@ -351,24 +354,63 @@ class MatchFunctions:
             log_error("Getting collections failed. Reason: %s", str(e))
             return False, str(e)
 
-    def rename_functions(self, bv: BinaryView, selected_results: List[Dict]) -> List[Dict]:
-        """Rename functions from the binary against RevEng.AI database"""
+    def _process_rename_batch(self, chunk: List[Dict], bv: BinaryView, deci: DecompilerInterface = None) -> Tuple[int, int]:
         try:
-            log_info("RevEng.AI | Starting function renaming")
-
+            log_info(f"RevEng.AI | Processing chunk of {len(chunk)} functions")
             renamed_count = 0
-            for result in selected_results:
-                # Convert function_address from string to int
+            datatype_count = 0
+            for result in chunk:
                 try:
                     addr = int(result['function_address'])
+                    if rename_function_util(bv, addr, result['matched_name']):
+                        renamed_count += 1
+                        if result.get('signature_data', None) is not None:
+                            log_info(f"RevEng.AI | Applying data types for 0x{addr:x}")
+                            if deci is not None:
+                                try:
+                                    apply_data_types_util(addr, result['signature_data'], deci)
+                                    datatype_count += 1
+                                    log_info(f"RevEng.AI | Successfully applied data types for 0x{addr:x}")
+                                except Exception as e:
+                                    log_error(f"RevEng.AI | Failed to apply data types for 0x{addr:x}: {str(e)}")
+                                
                 except (ValueError, TypeError):
                     log_error(f"RevEng.AI | Invalid function address: {result}")
                     continue
 
-                if rename_function_util(bv, addr, result['matched_name']):
-                    renamed_count += 1
+            return renamed_count, datatype_count
+                
+        except Exception as e:
+            log_error(f"RevEng.AI | Error processing rename batch: {str(e)}")
+            return 0, 0
 
-            success_message = f"Successfully renamed {renamed_count} functions!" if renamed_count > 0 else "No functions were renamed!"
+    def rename_functions(self, bv: BinaryView, selected_results: List[Dict]) -> List[Dict]:
+        """Rename functions from the binary against RevEng.AI database"""
+        try:
+            log_info("RevEng.AI | Starting function renaming")
+            total_renamed_count = 0
+            chunk_size = 50
+            deci = DecompilerInterface.discover(force_decompiler="binja", bv=bv)
+            chunks = [selected_results[i:i + chunk_size] for i in range(0, len(selected_results), chunk_size)]
+
+            log_info(f"RevEng.AI | Processing {len(selected_results)} functions in {len(chunks)} chunks of size {chunk_size}")
+
+            with ThreadPoolExecutor(max_workers=4) as executor:
+                future_to_chunk = {
+                    executor.submit(self._process_rename_batch, chunk, bv, deci): i 
+                    for i, chunk in enumerate(chunks)
+                }
+
+                for future in as_completed(future_to_chunk):
+                    chunk_index = future_to_chunk[future]
+                    try:    
+                        renamed_count, datatype_count = future.result()
+                        total_renamed_count += renamed_count
+                        log_info(f"RevEng.AI | Chunk {chunk_index} completed: renamed {renamed_count} functions, applied {datatype_count} data types")
+                    except Exception as e:
+                        log_error(f"RevEng.AI | Error processing chunk {chunk_index}: {str(e)}")
+            
+            success_message = f"Successfully renamed {total_renamed_count} functions!" if total_renamed_count > 0 else "No functions were renamed!"
                 
             log_info(f"RevEng.AI | {success_message}")
 
@@ -377,7 +419,7 @@ class MatchFunctions:
             log_error(f"RevEng.AI | Error renaming functions: {str(e)}")
             return False, str(e)
     
-    def _process_data_type_batch(self, chunk: List[Dict]) -> List[Dict]:
+    def _process_data_type_batch(self, chunk: List[Dict], chunk_index: int) -> List[Dict]:
         try:
             log_info(f"RevEng.AI | Processing chunk of {len(chunk)} functions")
             function_ids = set([result['nearest_neighbor_id'] for result in chunk])
@@ -391,7 +433,7 @@ class MatchFunctions:
                 data = response.get("data", {})
                 items = data.get("items", [])
                 pending_count = sum(1 for item in items if item.get("status") == "pending")
-                log_info(f"RevEng.AI | {pending_count} items still pending...")
+                log_info(f"RevEng.AI | [Chunk {chunk_index}] {pending_count} items still pending...")
                 if not pending_count:
                     break
                 time.sleep(3)
@@ -436,13 +478,11 @@ class MatchFunctions:
             )
         return args
 
-
     def function_to_str(self, fnc: Function) -> str:
         # convert the signature to a string representation
         return f"{fnc.type} {fnc.name}"\
             f"({', '.join(self.function_arguments(fnc))})"
-
-        
+    
     def make_signature(self, data_types: List[Dict]) -> str:
         try:
             #log_info(f"RevEng.AI | Making signature for {data_types}")
@@ -479,7 +519,7 @@ class MatchFunctions:
             
             with ThreadPoolExecutor(max_workers=4) as executor:
                 future_to_chunk = {
-                    executor.submit(self._process_data_type_batch, chunk): i
+                    executor.submit(self._process_data_type_batch, chunk, i): i
                     for i, chunk in enumerate(chunks)
                 }
 
@@ -502,122 +542,3 @@ class MatchFunctions:
         except Exception as e:
             log_error(f"RevEng.AI | Error fetching data types: {str(e)}")
             return False, str(e)
-
-    def test(self, bv: BinaryView, selected_results: List[Dict]) -> Tuple[bool, Dict[str, Any]]:
-        try:
-            log_info("RevEng.AI | Starting test")
-
-            decompiler = DecompilerInterface.discover(force_decompiler="binja")
-
-            log_info(f"RevEng.AI | Decompiler: {decompiler}")
-            log_info(f"RevEng.AI | Type: {type(decompiler)}")
-
-            for addr, func in decompiler.functions.items():
-                log_info(f"RevEng.AI | {addr}: {func}")
-
-
-            log_info(f"RevEng.AI | Decompiler: {decompiler}")
-            for result in selected_results:
-                if result.get('signature_data', None) is not None:
-                    log_info(f"RevEng.AI | Testing 0x{result['function_address']:x}")
-                    self._apply_data_types(result['function_address'], result['signature_data'], decompiler)
-
-
-
-            return True, "Test completed"
-        except Exception as e:
-            log_error(f"RevEng.AI | Error testing: {str(e)}")
-            return False, str(e)
-        
-    def _apply_type(
-        self,
-        deci: DecompilerInterface,
-        artifact,
-        soft_skip=False
-    ) -> None | str:
-        supported_types = [
-            Function,
-            GlobalVariable,
-            Enum,
-            Struct,
-            Typedef
-        ]
-
-        if not any(isinstance(artifact, t) for t in supported_types):
-            return "Unsupported artifact type: " \
-                f"{artifact.__class__.__name__}"
-
-        try:
-            log_info(f"RevEng.AI | Applying artifact: {artifact.name}")
-            log_info(f"RevEng.AI | Artifact type: {artifact.__class__.__name__}")
-            log_info(f"RevEng.AI | Artifact Name: {artifact.name}")
-            log_info(f"RevEng.AI | Decompiler: {deci}")
-            if isinstance(artifact, Function):
-                deci.functions[artifact.addr] = artifact
-            elif isinstance(artifact, GlobalVariable):
-                deci.global_vars[artifact.addr] = artifact
-            elif isinstance(artifact, Enum):
-                deci.enums[artifact.name] = artifact
-            elif isinstance(artifact, Struct):
-                deci.structs[artifact.name] = artifact
-            elif isinstance(artifact, Typedef):
-                deci.typedefs[artifact.name] = artifact
-
-            
-            
-        except Exception as e:
-            log_error(f"Error while applying artifact '{artifact.name}'"
-                        f" of type {artifact.__class__.__name__}: {e}")
-            if not soft_skip:
-                return f"Error while applying artifact '{artifact.name}'"\
-                    f" of type {artifact.__class__.__name__}: {e}"
-
-        return None
-        
-    def _apply_types(self, deci: DecompilerInterface, artifacts: List) -> None | str:
-            for artifact in artifacts:
-                error = self._apply_type(deci, artifact, True)
-                if error is not None:
-                    return error
-            return None
-    
-    def _load_many_artifacts_from_list(self, artifacts: list[dict]) -> list:
-        _artifacts = []
-        for artifact in artifacts:
-            art = _art_from_dict(artifact)
-            if art is not None:
-                _artifacts.append(art)
-        return _artifacts
-        
-    def _apply_data_types(self, function_addr: int = 0,
-        signature=None,
-        deci: DecompilerInterface = None,) -> None:
-        if not deci:
-            log_error("RevEng.AI | Unable to find a decompiler")
-            return
-
-        try:
-            # get the function signature from the table
-            function: Function = signature.get("function")
-            deps = signature.get("deps")
-
-            function.addr = function_addr
-
-            # fisrt apply the dependencies
-            res = self._apply_types(deci, self._load_many_artifacts_from_list(deps))
-            if res is not None:
-                log_error(
-                    f"Failed to apply function dependencies: {res}")
-                return
-
-            # then apply the function signature
-            res = self._apply_type(deci, function)
-            if res is not None:
-                log_error(f"Failed to apply function signature: {res}")
-                return
-
-            # show success message
-            log_info("Successfully applied function signature and dependencies")
-
-        except Exception as e:
-            log_error(f"Error: {e}")
