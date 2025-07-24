@@ -13,12 +13,12 @@ class AutoUnstrip:
         self.path = None
         self.max_workers = 4 
 
-    def _process_batch(self, function_ids: List[int], id_to_addr: Dict[int, int], bv: BinaryView) -> Tuple[int, List[str]]:
+    def _process_batch(self, function_ids: List[int], id_to_addr: Dict[int, int], bv: BinaryView, debug_symbols: bool, data_types: bool) -> Tuple[int, List[str]]:
         try:
             functions_by_distance = RE_nearest_symbols_batch(
                 function_ids=function_ids,
                 distance=self.auto_unstrip_distance,
-                debug_enabled=True,
+                debug_enabled=debug_symbols,
                 nns=1
             ).json()["function_matches"]
 
@@ -54,6 +54,7 @@ class AutoUnstrip:
                                 log_info(f"RevEng.AI | Function {function['function_id']} has a score of {function['box_plot']['average']:.2f} for name {new_name_mangled}, renaming")
                                 if rename_function_util(bv, func_addr, new_name_mangled):
                                     renamed_count += 1
+                                    
                                 break
                     
 
@@ -66,9 +67,12 @@ class AutoUnstrip:
         except Exception as e:
             return 0, [str(e)]
 
-    def auto_unstrip(self, bv: BinaryView): 
+    def auto_unstrip(self, bv: BinaryView, options: Dict[str, Any]): 
         try:    
             log_info("RevEng.AI | Auto Unstripping binary")
+
+            debug_symbols = options.get("debug_symbols", True)
+            data_types = options.get("data_types", False)
 
             self.base_addr = bv.image_base
             self.path = bv.file.filename
@@ -99,7 +103,7 @@ class AutoUnstrip:
             all_errors = []
             with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
                 future_to_chunk = {
-                    executor.submit(self._process_batch, chunk, id_to_addr, bv): i 
+                    executor.submit(self._process_batch, chunk, id_to_addr, bv, debug_symbols, data_types): i 
                     for i, chunk in enumerate(chunks)
                 }
 

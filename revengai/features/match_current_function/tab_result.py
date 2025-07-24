@@ -27,9 +27,9 @@ class ResultTab(QWidget):
         layout = QVBoxLayout()      
 
         self.results_table = QTableWidget()
-        self.results_table.setColumnCount(6)
+        self.results_table.setColumnCount(7)
         self.results_table.setHorizontalHeaderLabels([
-            "Selected", "Original Function Name", "Matched Function Name", "Signature", "Matched Binary", "Similarity"
+            "Selected", "Original Function Name", "Matched Function Name", "Signature", "Matched Binary", "Similarity", "Confidence"
         ])
         
         header = self.results_table.horizontalHeader()
@@ -39,6 +39,7 @@ class ResultTab(QWidget):
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(6, QHeaderView.ResizeToContents)
 
         self.results_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.results_table.setSelectionMode(QTableWidget.SingleSelection)
@@ -116,6 +117,7 @@ class ResultTab(QWidget):
                 "signature",
                 "matched_binary",
                 "similarity",
+                "confidence"
             ]
             
             # Create and set items for each column
@@ -137,12 +139,18 @@ class ResultTab(QWidget):
         
         self.results_table.cellClicked.connect(self.on_checkbox_changed)
 
-    def update_current_matches_with_signatures(self, signatures):
+    def update_current_matches_with_signatures(self, selected_results):
+        log_info(f"RevEng.AI | Updating current matches with signatures")
         for match in self.current_matches:
-            if not match.get("nearest_neighbor_id"):
+            if not match.get("nearest_neighbor_id", False):
                 continue
-            for signature_data in signatures:
-                if match["nearest_neighbor_id"] == signature_data["nearest_neighbor_id"]:
-                    match["signature"] = signature_data["signature"]
+            for result in selected_results:
+                if not result.get("nearest_neighbor_id", False):
+                    continue
+                if match["nearest_neighbor_id"] == result["nearest_neighbor_id"]:
+                    log_info(f"RevEng.AI | Found signature for {match['original_name']}")
+                    match["signature"] = result["signature"]
+                    match["data_types"] = result["data_types"]
+                    match["signature_data"] = result["signature_data"]
                     break
         self.populate_results_table()

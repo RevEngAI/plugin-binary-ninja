@@ -58,6 +58,8 @@ def create_cancellable_progress_dialog(parent, title, message, cancel_callback=N
                 background-color: #bd2130;
             }
         """)
+
+    cancel_button.clicked.connect(cancel_callback)
     
     progress_bar = progress.findChild(QProgressBar)
     if progress_bar:
@@ -78,9 +80,5 @@ def create_cancellable_progress_dialog(parent, title, message, cancel_callback=N
             border-radius: 3px;
         }
     """)
-    
-    # Connect cancel callback if provided
-    if cancel_callback:
-        progress.canceled.connect(cancel_callback)
-    
+
     return progress 

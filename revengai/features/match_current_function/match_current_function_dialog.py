@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton,
                              QSplitter, QTextEdit, QProgressBar, QSlider)
 from PySide6.QtCore import Qt, QTimer, QCoreApplication
 from PySide6.QtGui import QIcon
-from revengai.utils import create_progress_dialog
+from revengai.utils import create_progress_dialog, create_cancellable_progress_dialog
 from revengai.utils.data_thread import DataThread
 from .tab_search import SearchTab
 from .tab_result import ResultTab
@@ -207,7 +207,7 @@ class MatchCurrentFunctionDialog(QDialog):
         try:
 
             # Create and show progress dialog
-            self.progress = create_progress_dialog(self, "RevEng.AI Fetch Data Types", "Fetching data types...")
+            self.progress = create_cancellable_progress_dialog(self, "RevEng.AI Fetch Data Types", "Fetching data types...", self.match_current_function.cancel)
             self.progress.show()
             QCoreApplication.processEvents() 
             self.status_label.setText("Fetching data types...")
@@ -215,7 +215,8 @@ class MatchCurrentFunctionDialog(QDialog):
             self.fetch_data_types_thread = DataThread(
                 self.match_current_function.fetch_data_types,
                 self.bv,
-                self.results_tab.current_matches
+                self.results_tab.current_matches,
+                self.match_current_function.clear_cancelled
             )
             self.fetch_data_types_thread.finished.connect(self.on_fetching_data_types_finished)
             self.fetch_data_types_thread.start()
@@ -289,6 +290,8 @@ class MatchCurrentFunctionDialog(QDialog):
                 QMessageBox.Ok
             )
         else:
+            self.results_tab.current_matches = []
+            self.results_tab.populate_results_table()
             log_error(f"RevEng.AI | Current function matching failed: {data}")
             self.status_label.setText(f"Matching failed: {data}")
             QMessageBox.critical(

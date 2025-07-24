@@ -1,6 +1,6 @@
 from binaryninja import log_error
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, 
-                             QPushButton, QLabel)
+                             QPushButton, QLabel, QCheckBox)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
 from PySide6.QtCore import QCoreApplication
@@ -43,6 +43,14 @@ class AutoUnstripDialog(QDialog):
         header_layout.addLayout(info_layout, stretch=1)
         
         layout.addLayout(header_layout)
+
+        self.debug_symbols_checkbox = QCheckBox("Limit Matches to Debug Symbols")
+        self.debug_symbols_checkbox.setChecked(True)
+        layout.addWidget(self.debug_symbols_checkbox)
+        self.data_types_checkbox = QCheckBox("Get functions Data Types (renaming may take longer)")
+        self.data_types_checkbox.setChecked(False)
+        layout.addWidget(self.data_types_checkbox)
+
         layout.addSpacing(20)
 
         button_layout = QHBoxLayout()
@@ -76,9 +84,14 @@ class AutoUnstripDialog(QDialog):
     def _auto_unstrip(self):
         self.progress = create_progress_dialog(self, "RevEng.AI Auto Unstrip", "Auto Unstripping binary...")
         self.progress.show()
-        QCoreApplication.processEvents()   
+        QCoreApplication.processEvents()  
+
+        options = {
+            "debug_symbols": self.debug_symbols_checkbox.isChecked(),
+            "data_types": self.data_types_checkbox.isChecked()
+        }
         
-        self.auto_unstrip_thread = DataThread(self.auto_unstrip.auto_unstrip, self.bv)
+        self.auto_unstrip_thread = DataThread(self.auto_unstrip.auto_unstrip, self.bv, options)
         self.auto_unstrip_thread.finished.connect(self._on_auto_unstrip_finished)
         self.auto_unstrip_thread.start()
 

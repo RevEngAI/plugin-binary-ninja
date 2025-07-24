@@ -7,7 +7,20 @@ import json
 import re
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from libbs.artifacts import _art_from_dict
+from libbs.api import DecompilerInterface
+from libbs.decompilers.binja.interface import BinjaInterface 
+from threading import Event
 from revengai.utils import rename_function as rename_function_util
+from revengai.utils import apply_data_types as apply_data_types_util
+from libbs.artifacts import (
+    Function,
+    FunctionArgument,
+    GlobalVariable,
+    Enum,
+    Struct,
+    Typedef,
+)
 
 class MatchCurrentFunction:
     def __init__(self, config):
@@ -18,6 +31,7 @@ class MatchCurrentFunction:
         self.analyzed_functions = []
         self.filtered_collections = []
         self.filtered_binaries = []
+        self.cancelled = Event()
 
     def search_collections(self, bv: BinaryView, search_term: str = ""):
         try:
@@ -129,13 +143,13 @@ class MatchCurrentFunction:
             function_addr = options.get("function", None)
             result = { "matched": 0, "skipped": 0, "data": [] }
 
-            functions = bv.get_functions_containing(function_addr)
+            functions_containing = bv.get_functions_containing(function_addr)
             
-            if not functions:
+            if not functions_containing:
                 log_error(f"RevEng.AI | Function not found at 0x{function_addr:x}")
                 raise Exception("Function not found at address")
             
-            function = functions[0]
+            function = functions_containing[0]
             log_info(f"RevEng.AI | Function: {function.name} at 0x{function.start:x}")
 
             filtered_collections = []
@@ -150,7 +164,7 @@ class MatchCurrentFunction:
             log_info(f"RevEng.AI | Selected collections: {selected_collections}")
             log_info(f"RevEng.AI | Debug symbols: {debug_symbols}")
             log_info(f"RevEng.AI | Debug symbols count: {debug_symbols_count}")
-            log_info(f"RevEng.AI | Function: 0x{function_addr:x}")
+            log_info(f"RevEng.AI | Clicked address: 0x{function_addr:x}")
 
             binary_id = self.config.get_binary_id(bv)
             if not binary_id:
@@ -173,21 +187,43 @@ class MatchCurrentFunction:
                 binaries=filtered_binaries,
                 nns=debug_symbols_count
             ).json()["function_matches"]
+
+            functions = []
+            for function_by_distance in functions_by_distance:
+                functions.append({"function_id": function_by_distance['origin_function_id'], "function_name": function_by_distance['nearest_neighbor_function_name']})
+            if len(functions) == 0:
+                return 0, []
+            functions_by_score = RE_name_score(functions).json()["data"]
+            if len(functions_by_score) == 0:
+                return 0, []
+            
             results = []
-            for result in functions_by_distance:
+            for function_by_distance in functions_by_distance:
                 try:
+                    
+                    matched_name = function_by_distance['nearest_neighbor_function_name'] if function_by_distance['nearest_neighbor_function_name'] else function_by_distance['nearest_neighbor_function_name_mangled']
+                    matched_name_mangled = function_by_distance['nearest_neighbor_function_name_mangled'] if function_by_distance['nearest_neighbor_function_name_mangled'] else function_by_distance['nearest_neighbor_function_name']
+
+                    functions = [{"function_id": function_by_distance['origin_function_id'], "function_name": matched_name_mangled}]
+                    functions_by_score = RE_name_score(functions).json()["data"]
+                    function_by_score = next((f for f in functions_by_score if f['function_id'] == function_by_distance['origin_function_id']), None)
+
+                    confidence = function_by_score.get('box_plot', {}).get('average', 0) if function_by_score else 0
+
                     results.append({
-                        "original_name": function.name,
-                        "matched_name": result['nearest_neighbor_function_name_mangled'] if result['nearest_neighbor_function_name_mangled'] else result['nearest_neighbor_function_name'],
+                        "original_name": function.name if hasattr(function, 'name') else 'Unknown',
+                        "matched_name": matched_name,
+                        "matched_name_mangled": matched_name_mangled,
                         "signature": "N/A",
-                        "matched_binary": result['nearest_neighbor_binary_name'],
-                        "similarity": f"{(result['confidence'] * 100):.2f}%",
-                        "nearest_neighbor_id": result['nearest_neighbor_id'],
-                        "function_address": function.start
+                        "matched_binary": function_by_distance['nearest_neighbor_binary_name'],
+                        "similarity": f"{(function_by_distance['confidence'] * 100):.2f}%",
+                        "confidence": f"{confidence:.2f}%",
+                        "nearest_neighbor_id": function_by_distance['nearest_neighbor_id'],
+                        "function_address": function.start if hasattr(function, 'start') else 0
                     })
 
                 except Exception as e:
-                    log_error(f"RevEng.AI | Error processing function {result['origin_function_id']}: {str(e)}")
+                    log_error(f"RevEng.AI | Error processing function {function_by_distance.get('origin_function_id', 'Unknown')}: {str(e)}")
             return True, results
 
         except Exception as e:
@@ -312,9 +348,9 @@ class MatchCurrentFunction:
             
             renamed_count = 0
             failed_count = 0
-            
+            deci = BinjaInterface(bv)
             function_address = selected_result.get("function_address")
-            new_name = selected_result.get("matched_name")
+            new_name = selected_result.get("matched_name_mangled")
             
             if not function_address or not new_name:
                 log_error(f"RevEng.AI | Missing function address or name for rename")
@@ -322,12 +358,15 @@ class MatchCurrentFunction:
                 return False, "Missing function address or name for rename"
             
             if rename_function_util(bv, function_address, new_name):
-                renamed_count += 1
-                log_info(f"RevEng.AI | Successfully renamed function at {function_address:x} to {new_name}")
-            else:
-                failed_count += 1
-                log_error(f"RevEng.AI | Failed to rename function at {function_address:x}")
-                
+                        renamed_count += 1
+                        if selected_result.get('signature_data', None) is not None:
+                            log_info(f"RevEng.AI | Applying data types for 0x{function_address:x}")
+                            if deci is not None:
+                                try:
+                                    apply_data_types_util(function_address, selected_result['signature_data'], deci)
+                                    log_info(f"RevEng.AI | Successfully applied data types for 0x{function_address:x}")
+                                except Exception as e:
+                                    log_error(f"RevEng.AI | Failed to apply data types for 0x{function_address:x}: {str(e)}")
             
             message = f"Successfully renamed {renamed_count} functions"
             if failed_count > 0:
@@ -340,35 +379,58 @@ class MatchCurrentFunction:
             log_error(f"RevEng.AI | Error in function renaming: {str(e)}")
             return False, str(e)
 
-    def _process_data_type_batch(self, chunk: List[Dict]) -> List[Dict]:
+    def _process_data_type_batch(self, chunk: List[Dict], chunk_index: int) -> List[Dict]:
         try:
             log_info(f"RevEng.AI | Processing chunk of {len(chunk)} functions")
             function_ids = set([result['nearest_neighbor_id'] for result in chunk])
+            log_info(f"RevEng.AI | Cancelled: {self.cancelled.is_set()}")
+            if self.cancelled.is_set():
+                return []
+            
             RE_functions_data_types(function_ids=list(function_ids))
+            log_info(f"RevEng.AI | Cancelled: {self.cancelled.is_set()}")
+            if self.cancelled.is_set():
+                return []
             signatures = []
             items = []
             while True:
+                if self.cancelled.is_set():
+                    return []
+                
                 response = RE_functions_data_types_poll(    
                     function_ids=list(function_ids),
                 ).json()
                 data = response.get("data", {})
                 items = data.get("items", [])
-                
                 pending_count = sum(1 for item in items if item.get("status") == "pending")
-                log_info(f"RevEng.AI | {pending_count} items still pending... trying again")
+                log_info(f"RevEng.AI | [Chunk {chunk_index}] {pending_count} items still pending...")
                 if not pending_count:
                     break
                 time.sleep(3)
 
             for item in items:
+                log_info(f"RevEng.AI | Cancelled: {self.cancelled.is_set()}")
+                if self.cancelled.is_set():
+                    return []
                 log_info(f"RevEng.AI | Item: {item['function_id']}")
                 if item['status'] != "completed":
                     continue
                 for result in chunk:
                     if result['nearest_neighbor_id'] == item['function_id']:
-                        signature = self.make_signature(item['data_types'])
-                        if signature != "N/A":
-                            signatures.append({"nearest_neighbor_id": result['nearest_neighbor_id'], "signature": signature})
+                        signature = "N/A"
+                        item2 = item.get("data_types", {})
+                        func_types = item2.get("func_types", None)
+                        func_deps = item2.get("func_deps", [])
+                        log_info(f"RevEng.AI | Func types: {func_types}")
+                        if func_types is not None:
+                            fnc: Function = _art_from_dict(func_types)
+                            if fnc.name is None:
+                                log_info(f"Function {item['function_id']} has no name, skipping signature application.")
+                                continue
+                            log_info(f"Applying signature for {fnc.name}")
+                            signature = self.function_to_str(fnc)
+                            if signature != "N/A":
+                                signatures.append({"nearest_neighbor_id": result['nearest_neighbor_id'], "signature": signature, "data_types": item['data_types'], "signature_data": {"deps": func_deps, "function": fnc}})
                         break
 
             #log_info(f"RevEng.AI | Total count: {total_count}")
@@ -413,10 +475,12 @@ class MatchCurrentFunction:
             log_info(f"RevEng.AI | Processing {len(selected_results)} functions in {len(chunks)} chunks of size {chunk_size}")
 
             signatures = []
+            if self.cancelled.is_set():
+                return False, "Operation cancelled"
             
             with ThreadPoolExecutor(max_workers=4) as executor:
                 future_to_chunk = {
-                    executor.submit(self._process_data_type_batch, chunk): i
+                    executor.submit(self._process_data_type_batch, chunk, i): i
                     for i, chunk in enumerate(chunks)
                 }
 
@@ -439,3 +503,25 @@ class MatchCurrentFunction:
         except Exception as e:
             log_error(f"RevEng.AI | Error fetching data types: {str(e)}")
             return False, str(e)
+        
+    def function_arguments(self, fnc: Function) -> list[str]:
+        args = []
+        for k in fnc.header.args:
+            arg: FunctionArgument = fnc.header.args[k]
+            args.append(
+                f"{arg.type} {arg.name}"
+            )
+        return args
+            
+    def function_to_str(self, fnc: Function) -> str:
+        # convert the signature to a string representation
+        return f"{fnc.type} {fnc.name}"\
+            f"({', '.join(self.function_arguments(fnc))})"
+    
+    def cancel(self):
+        log_info("RevEng.AI | Cancelling operation...")
+        self.cancelled.set()
+
+    def clear_cancelled(self):
+        log_info("RevEng.AI | Clearing cancelled event...")
+        self.cancelled.clear()

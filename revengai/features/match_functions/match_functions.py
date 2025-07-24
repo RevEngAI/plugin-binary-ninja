@@ -8,6 +8,7 @@ import time
 from libbs.artifacts import _art_from_dict
 from libbs.api import DecompilerInterface
 from libbs.decompilers.binja.interface import BinjaInterface 
+from threading import Event
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from revengai.utils import rename_function as rename_function_util
 from revengai.utils import apply_data_types as apply_data_types_util
@@ -30,6 +31,7 @@ class MatchFunctions:
         self.analyzed_functions = []
         self.filtered_collections = []
         self.filtered_binaries = []
+        self.cancelled = Event()
 
     def search_collections(self, bv: BinaryView, search_term: str = ""):
         try:
@@ -48,7 +50,9 @@ class MatchFunctions:
     def _process_batch(self, function_ids: List[int], id_to_addr: Dict[int, int], confidence_threshold: float, debug_symbols: bool, bv: BinaryView) -> Tuple[int, List[str]]:
         try:
             log_info(f"RevEng.AI | Processing batch of {len(function_ids)} functions")
-
+            if self.cancelled.is_set():
+                return 0, []
+            
             functions_by_distance = RE_nearest_symbols_batch(
                 function_ids=function_ids,
                 debug_enabled=debug_symbols,
@@ -57,16 +61,24 @@ class MatchFunctions:
                 nns=1
             ).json()["function_matches"]
             
+            if self.cancelled.is_set():
+                return 0, []
+            
             functions = []
             for function in functions_by_distance:
                 functions.append({"function_id": function['origin_function_id'], "function_name": function['nearest_neighbor_function_name']})
             if len(functions) == 0:
                 return 0, []
             functions_by_score = RE_name_score(functions).json()["data"]
+            if self.cancelled.is_set():
+                return 0, []
+            
             matched_count = 0
             lines = []
             for result in functions_by_distance:
                 try:
+                    if self.cancelled.is_set():
+                        return 0, []
                     
                     line = {
                         "icon_path": f"{os.path.dirname(__file__)}/../../images/failed.png",
@@ -126,7 +138,7 @@ class MatchFunctions:
 
         except Exception as e:
             log_error(f"RevEng.AI | Error processing batch: {str(e)}")
-            return 0, [str(e)]
+            return 0, []
 
     def match_functions(self, bv: BinaryView, options: Dict[str, Any]) -> List[Dict]:
         try:
@@ -153,7 +165,13 @@ class MatchFunctions:
             if not binary_id:
                 raise Exception("Analysis not found. Please choose one using 'Choose Source' feature.")
             
+            if self.cancelled.is_set():
+                return False, "Operation cancelled"
+            
             analyzed_functions = RE_analyze_functions(self.path, binary_id).json()["functions"]
+            if self.cancelled.is_set():
+                return False, "Operation cancelled"
+            
             function_ids = []
 
             log_info(f"RevEng.AI | Found {len(analyzed_functions)} analyzed functions")
@@ -165,7 +183,9 @@ class MatchFunctions:
 
             for index, function in enumerate(functions, 1):
                 #log_info( f"RevEng.AI | Searching for {function.name} [{index}/{len_functions}]")
-    
+                if self.cancelled.is_set():
+                    return False, "Operation cancelled"
+                
                 analyzed_function = next((f for f in analyzed_functions if (f["function_vaddr"] + bv.image_base) == function.start), None)
 
                 if analyzed_function:
@@ -361,6 +381,9 @@ class MatchFunctions:
             datatype_count = 0
             for result in chunk:
                 try:
+                    if self.cancelled.is_set():
+                        return 0, 0
+                    
                     addr = int(result['function_address'])
                     if rename_function_util(bv, addr, result['matched_name']):
                         renamed_count += 1
@@ -390,7 +413,7 @@ class MatchFunctions:
             log_info("RevEng.AI | Starting function renaming")
             total_renamed_count = 0
             chunk_size = 50
-            deci = DecompilerInterface.discover(force_decompiler="binja", bv=bv)
+            deci = BinjaInterface(bv)
             chunks = [selected_results[i:i + chunk_size] for i in range(0, len(selected_results), chunk_size)]
 
             log_info(f"RevEng.AI | Processing {len(selected_results)} functions in {len(chunks)} chunks of size {chunk_size}")
@@ -423,10 +446,20 @@ class MatchFunctions:
         try:
             log_info(f"RevEng.AI | Processing chunk of {len(chunk)} functions")
             function_ids = set([result['nearest_neighbor_id'] for result in chunk])
+            log_info(f"RevEng.AI | Cancelled: {self.cancelled.is_set()}")
+            if self.cancelled.is_set():
+                return []
+            
             RE_functions_data_types(function_ids=list(function_ids))
+            log_info(f"RevEng.AI | Cancelled: {self.cancelled.is_set()}")
+            if self.cancelled.is_set():
+                return []
             signatures = []
             items = []
             while True:
+                if self.cancelled.is_set():
+                    return []
+                
                 response = RE_functions_data_types_poll(    
                     function_ids=list(function_ids),
                 ).json()
@@ -439,6 +472,9 @@ class MatchFunctions:
                 time.sleep(3)
 
             for item in items:
+                log_info(f"RevEng.AI | Cancelled: {self.cancelled.is_set()}")
+                if self.cancelled.is_set():
+                    return []
                 log_info(f"RevEng.AI | Item: {item['function_id']}")
                 if item['status'] != "completed":
                     continue
@@ -501,11 +537,16 @@ class MatchFunctions:
             return "N/A"
 
     def fetch_data_types(self, bv: BinaryView, selected_results: List[Dict]) -> Tuple[bool, Dict[str, Any]]:
+        
         try:
             log_info("RevEng.AI | Starting data type fetching")
             
             if len(selected_results) == 0:
                 return False, "No valid functions selected"
+            
+            log_info(f"RevEng.AI | Cancelled: {self.cancelled.is_set()}")
+            if self.cancelled.is_set():
+                return False, "Operation cancelled"
 
             chunk_size = 50
             if len(selected_results) < chunk_size:
@@ -516,6 +557,9 @@ class MatchFunctions:
             log_info(f"RevEng.AI | Processing {len(selected_results)} functions in {len(chunks)} chunks of size {chunk_size}")
 
             signatures = []
+            log_info(f"RevEng.AI | Cancelled: {self.cancelled.is_set()}")
+            if self.cancelled.is_set():
+                return False, "Operation cancelled"
             
             with ThreadPoolExecutor(max_workers=4) as executor:
                 future_to_chunk = {
@@ -542,3 +586,11 @@ class MatchFunctions:
         except Exception as e:
             log_error(f"RevEng.AI | Error fetching data types: {str(e)}")
             return False, str(e)
+        
+    def cancel(self):
+        log_info("RevEng.AI | Cancelling operation...")
+        self.cancelled.set()
+
+    def clear_cancelled(self):
+        log_info("RevEng.AI | Clearing cancelled event...")
+        self.cancelled.clear()

@@ -1,7 +1,7 @@
 from binaryninja import log_info, log_error
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QTabWidget, QMessageBox, QCheckBox, QGroupBox, QSlider)
 from PySide6.QtCore import Qt, QCoreApplication
-from revengai.utils import create_progress_dialog
+from revengai.utils.progress_dialog import create_cancellable_progress_dialog
 from revengai.utils.data_thread import DataThread
 from .tab_search import SearchTab
 from .tab_result import ResultTab
@@ -118,7 +118,7 @@ class MatchFunctionsDialog(QDialog):
         
         log_info("RevEng.AI | Starting function matching process")
         
-        self.progress = create_progress_dialog(self, "RevEng.AI Match Functions", "Matching functions...")
+        self.progress = create_cancellable_progress_dialog(self, "RevEng.AI Match Functions", "Matching functions...", self.match_functions.cancel)
         self.progress.show()
         QCoreApplication.processEvents() 
         self.status_label.setText("Matching functions...")
@@ -129,14 +129,14 @@ class MatchFunctionsDialog(QDialog):
             "debug_symbols": self.debug_symbols_checkbox.isChecked()
         }
         
-        self.match_thread = DataThread(self.match_functions.match_functions, self.bv, options)
+        self.match_thread = DataThread(self.match_functions.match_functions, self.bv, options, self.match_functions.clear_cancelled)
         self.match_thread.finished.connect(self.on_matching_finished)
         self.match_thread.start()   
 
     def start_renaming(self):
         log_info("RevEng.AI | Starting function renaming process")
         
-        self.progress = create_progress_dialog(self, "RevEng.AI Rename Selected Functions", "Renaming Selected functions...")
+        self.progress = create_cancellable_progress_dialog(self, "RevEng.AI Rename Selected Functions", "Renaming Selected functions...", self.match_functions.cancel)
         self.progress.show()
         QCoreApplication.processEvents() 
         self.status_label.setText("Renaming selected functions...")
@@ -144,7 +144,8 @@ class MatchFunctionsDialog(QDialog):
         self.rename_thread = DataThread(
             self.match_functions.rename_functions, 
             self.bv, 
-            self.results_tab.selected_results
+            self.results_tab.selected_results,
+            self.match_functions.clear_cancelled
         )
         self.rename_thread.finished.connect(self.on_renaming_finished)
         self.rename_thread.start()  
@@ -153,7 +154,7 @@ class MatchFunctionsDialog(QDialog):
         log_info("RevEng.AI | Starting function data type fetching process")
         
         try:
-            self.progress = create_progress_dialog(self, "RevEng.AI Fetch Data Types", "Fetching data types...")
+            self.progress = create_cancellable_progress_dialog(self, "RevEng.AI Fetch Data Types", "Fetching data types...", self.match_functions.cancel)
             self.progress.show()
             QCoreApplication.processEvents() 
             self.status_label.setText("Fetching data types...")
@@ -164,7 +165,7 @@ class MatchFunctionsDialog(QDialog):
                 QMessageBox.warning(self,"RevEng.AI Fetch Data Types","No function matches available. Please run 'Fetch Results' first.", QMessageBox.Ok)
                 return
 
-            self.fetch_data_types_thread = DataThread(self.match_functions.fetch_data_types, self.bv, self.results_tab.selected_results)
+            self.fetch_data_types_thread = DataThread(self.match_functions.fetch_data_types, self.bv, self.results_tab.selected_results, self.match_functions.clear_cancelled)
             self.fetch_data_types_thread.finished.connect(self.on_fetching_data_types_finished)
             self.fetch_data_types_thread.start()
 
@@ -220,6 +221,8 @@ class MatchFunctionsDialog(QDialog):
             self.results_tab.status_label.setText(f"Total Functions Analyzed: {total_count} | Successful Analyses: {successful_count} | Skipped Analyses: {skipped_count}")
             QMessageBox.information(self, "RevEng.AI Match Functions", f"Function matching completed successfully!\nSuccessful matches: {successful_count}\nNot enough confidence: {failed_count}\nSkipped: {skipped_count}\nTotal functions analyzed: {total_count}", QMessageBox.Ok)
         else:
+            self.results_tab.current_matches = []
+            self.results_tab.populate_results_table()
             log_error(f"RevEng.AI | Function matching failed: {data}")
             self.status_label.setText(f"Matching failed: {data}")
             QMessageBox.critical(self, "RevEng.AI Match Functions Error", f"Failed to match functions:\n{data}", QMessageBox.Ok)
