@@ -16,7 +16,7 @@ class ChooseSourceDialog(QDialog):
         self.init_ui()
 
     def init_ui(self):
-        self.setWindowTitle("Choose Source")
+        self.setWindowTitle("RevEng.AI: Choose Source")
         self.setMinimumWidth(500)
         layout = QVBoxLayout()
 

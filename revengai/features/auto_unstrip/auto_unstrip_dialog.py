@@ -18,7 +18,7 @@ class AutoUnstripDialog(QDialog):
         self.init_ui()
 
     def init_ui(self):
-        self.setWindowTitle("Auto Unstrip Binary")
+        self.setWindowTitle("RevEng.AI: Auto Unstrip Binary")
         self.setMinimumWidth(500)
 
         layout = QVBoxLayout()

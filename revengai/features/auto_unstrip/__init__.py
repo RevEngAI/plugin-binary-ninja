@@ -22,4 +22,4 @@ class AutoUnstripFeature(BaseAuthFeature):
         log_info("RevEng.AI | Opening AutoUnstrip dialog")
         dialog = AutoUnstripDialog(self.config, self.auto_unstrip, bv)
         dialog.exec_()
-
+    

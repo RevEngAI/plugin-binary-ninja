@@ -151,4 +151,4 @@ This plugin is released under the GPL-2.0 license.
 
 ## Disclaimer
 
-Binary Ninja is a trademark of Vector 35. This project is not affiliated with or endorsed by Vector 35.
+Binary Ninja is a trademark of Vector 35. This project isn't affiliated with or endorsed by Vector 35.

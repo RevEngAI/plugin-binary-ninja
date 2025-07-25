@@ -3,7 +3,7 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton, Q
 from PySide6.QtCore import Qt, QCoreApplication
 from revengai.utils.progress_dialog import create_cancellable_progress_dialog
 from revengai.utils.data_thread import DataThread
-from .tab_search import SearchTab
+from revengai.utils.tab_search import SearchTab
 from .tab_result import ResultTab
 
 class MatchFunctionsDialog(QDialog):

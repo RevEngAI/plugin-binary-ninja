@@ -1,17 +1,16 @@
-from binaryninja import log_info, log_error
+from binaryninja import log_info, log_error, log_debug
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
                              QLabel, QLineEdit, QTableWidget, QTableWidgetItem,
                              QHeaderView, QGroupBox, QSlider, QCheckBox, QMessageBox)
 from PySide6.QtCore import Qt, QCoreApplication
-from PySide6.QtGui import QIcon
 from revengai.utils import create_progress_dialog
 from revengai.utils.data_thread import DataThread
 
 class SearchTab(QWidget):
 
-    def __init__(self, match_current_function, bv, status_label):
+    def __init__(self, match_functions, bv, status_label):
         super().__init__()
-        self.match_current_function = match_current_function
+        self.match_functions = match_functions
         self.bv = bv
         self.status_label = status_label
         self.current_collections = []
@@ -90,7 +89,7 @@ class SearchTab(QWidget):
         search_term = self.search_input.text().strip()
         log_info(f"RevEng.AI | Search term: {search_term}")
 
-        self.search_collections_thread = DataThread(self.match_current_function.search_collections, self.bv, search_term)
+        self.search_collections_thread = DataThread(self.match_functions.search_collections, self.bv, search_term)
         self.search_collections_thread.finished.connect(self._on_search_collections_finished)
         self.search_collections_thread.start()
 
@@ -168,18 +167,30 @@ class SearchTab(QWidget):
             else:
                 new_state = Qt.Unchecked if current_state == Qt.Checked else Qt.Checked
                 checkbox_item.setCheckState(new_state)
+
+            is_selected = collection_id in [str(c.get("id", "")) for c in self.selected_collections]
             
-            # Update selected collections
-            if new_state == Qt.Checked:
-                if collection not in self.selected_collections:
-                    self.selected_collections.append(collection)
-            else:
-                if collection in self.selected_collections:
-                    self.selected_collections.remove(collection)
-            
-            log_info(f"RevEng.AI | Collection {'selected' if new_state == Qt.Checked else 'deselected'}: {collection.get('name', 'Unknown')}")
-            log_info(f"RevEng.AI | Selected collections: {len(self.selected_collections)}")
-            
+            if new_state == Qt.Checked and not is_selected:
+                # Add to selection
+                self.selected_collections.append(collection)
+                # Select the row
+                for col in range(self.collections_table.columnCount()):
+                    row_item = self.collections_table.item(row, col)
+                    if row_item:
+                        row_item.setSelected(True)
+                log_info(f"RevEng.AI | Added collection to selection: {collection.get('name', '')}")
+                    
+            elif new_state == Qt.Unchecked and is_selected:
+                # Remove from selection
+                self.selected_collections = [c for c in self.selected_collections if str(c.get("id", "")) != collection_id]
+                # Deselect the row
+                for col in range(self.collections_table.columnCount()):
+                    row_item = self.collections_table.item(row, col)
+                    if row_item:
+                        row_item.setSelected(False)
+                log_info(f"RevEng.AI | Removed collection from selection: {collection.get('name', '')}")
+                
             # Update status
-            self.status_label.setText(f"Selected {len(self.selected_collections)} collections")
+            self.status_label.setText(f"Selected {len(self.selected_collections)} collection(s)")
+            log_info(f"RevEng.AI | Total selected collections: {len(self.selected_collections)}")
 
