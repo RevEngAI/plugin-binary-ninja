@@ -123,59 +123,8 @@ class MatchCurrentFunction(MatchFeature):
 
         except Exception as e:
             log_error(f"RevEng.AI | Error in function matching: {str(e)}")
-            raise
-        
-        def parse_date(date_str: str) -> str:
-            dt = datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%S.%f")
-            return dt.strftime("%Y-%m-%d %H:%M:%S")
-
-        def fetch_results(api_func, label: str) -> List[Dict[str, Any]]:
-            try:
-                log_info(f"RevEng.AI | Query: {query}")
-                response = api_func(query=query, page=1, page_size=1024).json()
-                results = response.get("data", {}).get("results", [])
-                log_info(f"Found {len(results)} {label.lower()}s")
-                return results
-            
-            except Exception as e:
-                log_error(f"RevEng.AI | Getting information failed. Reason: {str(e)}")
-                return []
-
-        def build_items(items_list: List[Dict[str, Any]], item_type: str) -> List[Tuple]:
-            items = []
-            for item in items_list:
-                name_key = "collection_name" if item_type == "Collection" else "binary_name"
-                date_key = "last_updated_at" if item_type == "Collection" else "created_at"
-                id_key = "collection_id" if item_type == "Collection" else "binary_id"
-                icon = "lock.png" if item_type == "Collection" and item["scope"] == "PRIVATE" else \
-                       "unlock.png" if item_type == "Collection" else "file.png"
-                
-                items.append({
-                    "name": item[name_key],
-                    "icon": icon,
-                    "type": item_type,
-                    "date": parse_date(item[date_key]),
-                    "model_name": item["model_name"],
-                    "owner": item["owned_by"],
-                    "id": item[id_key]
-                })
-            return items
-
-        try:
-
-            log_info(f"RevEng.AI | Searching for collections with '{query or 'N/A'}'")
-
-            collections_data = fetch_results(RE_collections_search, "collection")
-            binaries_data = fetch_results(RE_binaries_search, "binary")
-
-            table_items = build_items(collections_data, "Collection")
-            table_items += build_items(binaries_data, "Binary")
-
-            return table_items
-
-        except Exception as e:
-            log_error("Getting collections failed. Reason: %s", str(e))
             return False, str(e)
+
 
     def rename_function(self, bv: BinaryView, selected_result: Dict) -> List[Dict]:
         try:
