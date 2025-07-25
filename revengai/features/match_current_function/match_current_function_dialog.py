@@ -6,9 +6,9 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton,
                              QSplitter, QTextEdit, QProgressBar, QSlider)
 from PySide6.QtCore import Qt, QTimer, QCoreApplication
 from PySide6.QtGui import QIcon
-from revengai.utils import create_progress_dialog
+from revengai.utils import create_progress_dialog, create_cancellable_progress_dialog
 from revengai.utils.data_thread import DataThread
-from .tab_search import SearchTab
+from revengai.utils.tab_search import SearchTab
 from .tab_result import ResultTab
 
 class MatchCurrentFunctionDialog(QDialog):
@@ -207,7 +207,7 @@ class MatchCurrentFunctionDialog(QDialog):
         try:
 
             # Create and show progress dialog
-            self.progress = create_progress_dialog(self, "RevEng.AI Fetch Data Types", "Fetching data types...")
+            self.progress = create_cancellable_progress_dialog(self, "RevEng.AI Fetch Data Types", "Fetching data types...", self.match_current_function.cancel)
             self.progress.show()
             QCoreApplication.processEvents() 
             self.status_label.setText("Fetching data types...")
@@ -215,7 +215,8 @@ class MatchCurrentFunctionDialog(QDialog):
             self.fetch_data_types_thread = DataThread(
                 self.match_current_function.fetch_data_types,
                 self.bv,
-                self.results_tab.current_matches
+                self.results_tab.current_matches,
+                self.match_current_function.clear_cancelled
             )
             self.fetch_data_types_thread.finished.connect(self.on_fetching_data_types_finished)
             self.fetch_data_types_thread.start()
@@ -289,6 +290,8 @@ class MatchCurrentFunctionDialog(QDialog):
                 QMessageBox.Ok
             )
         else:
+            self.results_tab.current_matches = []
+            self.results_tab.populate_results_table()
             log_error(f"RevEng.AI | Current function matching failed: {data}")
             self.status_label.setText(f"Matching failed: {data}")
             QMessageBox.critical(
@@ -305,7 +308,7 @@ class MatchCurrentFunctionDialog(QDialog):
         if success:
             log_info(f"RevEng.AI | Data type fetching completed with {data['success_count']} functions having signatures")
             self.results_tab.update_current_matches_with_signatures(data["signatures"])
-            self.results_tab.populate_results_table()
+            #self.results_tab.populate_results_table()
             self.status_label.setText(f"Data type fetching completed: {data['success_count']} functions have signatures")
 
             QMessageBox.information(

@@ -11,7 +11,7 @@ class MatchCurrentFunctionFeature(BaseAuthFeature):
 
     def register(self):
         PluginCommand.register_for_address(
-            "RevEng.AI\\Match Current Function",
+            "RevEng.AI\\6 - Match Current Function",
             "Search and match the current function against RevEng.AI database",
             self.show_match_current_function_dialog,
             self.is_valid

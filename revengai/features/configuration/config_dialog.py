@@ -16,7 +16,7 @@ class ConfigDialog(QDialog):
         self.init_ui()
         
     def init_ui(self):
-        self.setWindowTitle("RevEng.AI Configuration Wizard")
+        self.setWindowTitle("RevEng.AI: Configuration Wizard")
         self.setMinimumWidth(500)
         
         layout = QVBoxLayout()
