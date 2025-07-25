@@ -9,7 +9,9 @@ This plugin brings the power of RevEng.AI directly into Binary Ninja. Here are t
 - **Choose a Source**: Select the uploaded binary whose analysis will be used for other features such as matching and renaming.
 - **Process Binary**: Upload the currently loaded binary in Binary Ninja to RevEng.AI for analysis.
 - **Auto-Unstrip**: Automatically restore stripped symbols in your binary using our AI engine.
-- **Function Matching**: Compare and match functions from your current binary with those in your existing collections.
+- **Match Functions**: Compare and match functions from your current binary with those in your existing collections.
+- **Match Unique Function**: Compare and match a single function from your current binary with those in your existing collections.
+- **View Function in Portal**: Convenient shortcut to explore the function within the platform interface.
 
 ---
 
@@ -131,6 +133,29 @@ Matched functions are displayed based on the given confidence value. You can nav
 
 ---
 
+### 6. Match Current Function
+
+Use function matching to identify similar functions in other binaries or collections:
+
+- Click `RevEng.AI > Match Current Functions`
+
+<img src="./images/currentfunction.png" >
+
+Matched functions are displayed based on the given similarity value. You can navigate or rename based on the results.
+
+---
+
+### 7. View Current Function in Portal
+
+Quick and easy way to open the current function in the RevEng.AI Portal.
+
+- Click `RevEng.AI > View Function in Portal`
+
+<img src="./images/output.gif" >
+
+---
+
+
 ## Troubleshooting
 
 - Only Binary Ninja 3.0+ is supported
@@ -144,6 +169,7 @@ This plugin relies on:
 - [reait](https://github.com/RevEngAI/reait)
 - requests
 - PySide6
+- libbs
 
 ## License
 
