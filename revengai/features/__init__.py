@@ -7,4 +7,13 @@ from .match_current_function import MatchCurrentFunctionFeature
 from .view_function_in_portal import ViewFunctionInPortalFeature    
 from .ai_decompiler import AIDecompilerFeature
 
-__all__ = ['ConfigurationFeature', 'UploadFeature', 'AutoUnstripFeature', 'ChooseSourceFeature', 'MatchFunctionsFeature', 'MatchCurrentFunctionFeature', 'ViewFunctionInPortalFeature', 'AIDecompilerFeature'] 
+__all__ = [
+    'ConfigurationFeature', 
+    'UploadFeature', 
+    'AutoUnstripFeature', 
+    'ChooseSourceFeature', 
+    'MatchFunctionsFeature', 
+    'MatchCurrentFunctionFeature', 
+    'ViewFunctionInPortalFeature', 
+    'AIDecompilerFeature'
+    ] 
