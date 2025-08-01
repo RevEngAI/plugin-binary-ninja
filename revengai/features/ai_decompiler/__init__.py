@@ -41,7 +41,7 @@ class AIDecompilerFeature(BaseAuthFeature):
                 self.dock_widget.raise_()
                 log_info(f"RevEng.AI | AI Decompiler Dock already open, adding tab 0x{func:x}")
                 if self.widget is not None:
-                    self.widget.add_tab(func)
+                    self.widget.pre_tab_setup(bv, func)
                 return
             
             self.dock_widget = QDockWidget("RevEng.AI | AI Decompiler", main_win)

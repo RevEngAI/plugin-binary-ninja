@@ -1,5 +1,6 @@
 from datetime import datetime
-from binaryninja import BinaryView, log_error, log_info, Symbol, SymbolType
+from binaryninja import BinaryView, log_error, log_info, Symbol, SymbolType, Function
+from reait.api import RE_analyze_functions
 from typing import List
 
 def rename_function(bv: BinaryView, addr: int, new_name: str, data_type: dict = None) -> bool:
@@ -29,3 +30,22 @@ def parse_date(date_str: str) -> str:
         return dt.strftime("%Y-%m-%d %H:%M:%S")
     except Exception as e:
         return date_str
+
+def get_function_by_addr(bv: BinaryView, addr: int) -> Function:
+    functions_containing = bv.get_functions_containing(addr)
+            
+    if not functions_containing:
+        log_error(f"RevEng.AI | Function not found at 0x{addr:x}")
+        raise Exception("Function not found at address")
+    
+    return functions_containing[0]
+
+def get_function_id_by_addr(bv: BinaryView, addr: int, binary_id: int):
+    analyzed_functions = RE_analyze_functions(bv.file.filename, binary_id).json()["functions"]
+    target_function = next((f for f in analyzed_functions if (f["function_vaddr"] + bv.image_base) == addr), None)
+    if not target_function:
+        log_error(f"RevEng.AI | Function not found at 0x{addr:x}")
+        raise Exception("Function not found at address")
+    function_id = target_function["function_id"]
+    log_info(f"RevEng.AI | Found function id {function_id} for function at 0x{addr:x}")
+    return function_id
