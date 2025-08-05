@@ -1,4 +1,5 @@
 from threading import Timer
+import threading
 from os.path import basename
 from typing import Optional
 from binaryninja import log_info, log_error, BinaryView
@@ -105,7 +106,7 @@ class PeriodicChecker(QObject):
             self._ai_decompiler_timer.timeout.connect(lambda: self._ai_decompiler_worker(function_id, name, callback, editor))
             
             # Start the timer with 5 second intervals
-            self._ai_decompiler_timer.start(5000)  # 1000 ms = 1 second
+            self._ai_decompiler_timer.start(30000)  # 1000 ms = 1 second
             
             log_info(f"RevEng.AI | Started AI decompiler periodic check for: {name}")
             
