@@ -1,5 +1,5 @@
 from binaryninja import BinaryView, log_info, log_error
-from reait.api import RE_models, RE_upload, RE_analysis_lookup, RE_analyse
+from reait.api import RE_models_v2, RE_upload, RE_analysis_lookup, RE_analyse
 from revengai.utils import PeriodicChecker
 
 class BinaryUploader:
@@ -8,7 +8,7 @@ class BinaryUploader:
  
     def get_models(self, bv: BinaryView):
         try:
-            models = RE_models().json()["data"]["models"]
+            models = RE_models_v2().json()["data"]["models"]
             log_info(f"RevEng.AI | Models: {models}")
             return True, models
         except Exception as e:
