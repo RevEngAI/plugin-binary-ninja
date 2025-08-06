@@ -1,6 +1,7 @@
+import json
 from binaryninja import Settings, log_info, log_error, BinaryView
 from reait.api import re_conf, RE_authentication, RE_search, re_binary_id
-import json
+
 
 class Config:
     def __init__(self):

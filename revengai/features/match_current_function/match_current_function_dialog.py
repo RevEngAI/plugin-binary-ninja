@@ -1,15 +1,8 @@
-from binaryninja import BinaryView, log_info, log_error
-from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton, 
-                             QLabel, QLineEdit, QTableWidget, QTableWidgetItem,
-                             QHeaderView, QTabWidget, QWidget, QMessageBox,
-                             QCheckBox, QDoubleSpinBox, QSpinBox, QGroupBox,
-                             QSplitter, QTextEdit, QProgressBar, QSlider)
-from PySide6.QtCore import Qt, QTimer, QCoreApplication
-from PySide6.QtGui import QIcon
-from revengai.utils import create_progress_dialog, create_cancellable_progress_dialog
-from revengai.utils.data_thread import DataThread
-from revengai.utils.tab_search import SearchTab
 from .tab_result import ResultTab
+from binaryninja import log_info, log_error
+from PySide6.QtCore import Qt, QCoreApplication
+from revengai.utils import create_progress_dialog, create_cancellable_progress_dialog, SearchTab, DataThread
+from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QTabWidget, QMessageBox, QCheckBox, QSpinBox, QGroupBox, QSlider
 
 class MatchCurrentFunctionDialog(QDialog):
     def __init__(self, config, match_current_function, bv, func):

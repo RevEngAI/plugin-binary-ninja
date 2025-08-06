@@ -1,8 +1,7 @@
-from binaryninja import log_error, log_info
-from PySide6.QtWidgets import QVBoxLayout, QCheckBox, QWidget, QTabWidget, QPlainTextEdit
 from PySide6.QtCore import QCoreApplication
-from revengai.utils import create_progress_dialog, get_function_by_addr
-from revengai.utils.c_highlighter import CHighlighter
+from binaryninja import log_error, log_info
+from revengai.utils import create_progress_dialog, get_function_by_addr, CHighlighter
+from PySide6.QtWidgets import QVBoxLayout, QCheckBox, QWidget, QTabWidget, QPlainTextEdit
 
 class AIDecompilerDialog(QWidget):
     def __init__(self, config, ai_decompiler, bv, func):

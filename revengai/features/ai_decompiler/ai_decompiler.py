@@ -1,9 +1,7 @@
+from typing import Dict, Optional, Callable
 from binaryninja import BinaryView, log_info, log_error
 from reait.api import RE_poll_ai_decompilation, RE_begin_ai_decompilation
-from typing import Dict, Optional, Callable
-from revengai.utils import get_function_id_by_addr as get_function_id_by_addr_util
-from revengai.utils.periodic_check_ai_decompiler import PeriodicChecker
-from revengai.utils.address_change_monitor import AddressChangeMonitor
+from revengai.utils import get_function_id_by_addr as get_function_id_by_addr_util, AddressChangeMonitor, AIDecompilerChecker
 
 class AIDecompiler:
     def __init__(self, config):
@@ -119,7 +117,7 @@ class AIDecompiler:
                     return
 
                 log_info("RevEng.AI | AI Decompilation started")
-                periodic_checker = PeriodicChecker()
+                periodic_checker = AIDecompilerChecker()
                 periodic_checker.start_ai_decompiler_checking(function_id, callback, editor, tab_name)
                 self._current_checker = periodic_checker
 

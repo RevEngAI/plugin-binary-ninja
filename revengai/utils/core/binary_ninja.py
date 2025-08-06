@@ -1,7 +1,6 @@
 from datetime import datetime
 from binaryninja import BinaryView, log_error, log_info, Symbol, SymbolType, Function
 from reait.api import RE_analyze_functions
-from typing import List
 
 def rename_function(bv: BinaryView, addr: int, new_name: str, data_type: dict = None) -> bool:
     try:

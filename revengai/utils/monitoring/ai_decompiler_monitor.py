@@ -1,15 +1,11 @@
 from threading import Timer
-import threading
-from os.path import basename
 from typing import Optional
-from binaryninja import log_info, log_error, BinaryView
-from requests.exceptions import RequestException
-from reait.api import RE_status, RE_poll_ai_decompilation, RE_begin_ai_decompilation
-from PySide6.QtWidgets import QMessageBox
+from binaryninja import log_info, log_error
+from reait.api import RE_poll_ai_decompilation, RE_begin_ai_decompilation
 from PySide6.QtWidgets import QPlainTextEdit
 from PySide6.QtCore import QTimer, QObject, Signal
 
-class PeriodicChecker(QObject):
+class AIDecompilerChecker(QObject):
     # Signal for thread-safe UI updates
     update_text_signal = Signal(object, str)
     
@@ -68,6 +64,7 @@ class PeriodicChecker(QObject):
             
         except Exception as ex:
             log_error(f"RevEng.AI | Error starting AI decompiler check: {str(ex)}")
+            
     def _ai_decompiler_worker(self, function_id: int, name: str, callback, editor: QPlainTextEdit):
         """Worker method that runs in a separate thread via QTimer"""
         try:

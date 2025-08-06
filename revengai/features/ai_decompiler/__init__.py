@@ -1,10 +1,10 @@
-from binaryninja import PluginCommand, log_info, BinaryView, log_error
-from PySide6.QtWidgets import QDockWidget
-from .ai_decompiler import AIDecompiler
-from binaryninjaui import UIContext
 from PySide6.QtCore import Qt
-from .ai_decompiler_dialog import AIDecompilerDialog
+from binaryninjaui import UIContext
+from .ai_decompiler import AIDecompiler
+from PySide6.QtWidgets import QDockWidget
 from revengai.utils import BaseAuthFeature
+from .ai_decompiler_dialog import AIDecompilerDialog
+from binaryninja import PluginCommand, log_info, BinaryView, log_error
 
 class AIDecompilerFeature(BaseAuthFeature):
     def __init__(self, config=None):

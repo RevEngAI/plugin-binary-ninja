@@ -1,7 +1,8 @@
-from binaryninja import PluginCommand, log_info, BinaryView
-from .view_function_in_portal import ViewFunctionInPortal
-from .view_function_in_portal_dialog import ViewFunctionInPortalDialog
 from revengai.utils import BaseAuthFeature
+from .view_function_in_portal import ViewFunctionInPortal
+from binaryninja import PluginCommand, log_info, BinaryView
+from .view_function_in_portal_dialog import ViewFunctionInPortalDialog
+
 
 class ViewFunctionInPortalFeature(BaseAuthFeature):
     def __init__(self, config=None):

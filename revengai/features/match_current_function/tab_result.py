@@ -1,11 +1,6 @@
-from binaryninja import log_info, log_error
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
-                             QLabel, QLineEdit, QTableWidget, QTableWidgetItem,
-                             QHeaderView, QGroupBox, QSlider, QCheckBox, QMessageBox)
-from PySide6.QtCore import Qt, QCoreApplication
-from PySide6.QtGui import QIcon
-from revengai.utils import create_progress_dialog
-from revengai.utils.data_thread import DataThread
+from PySide6.QtCore import Qt
+from binaryninja import log_info
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem, QHeaderView
 
 class ResultTab(QWidget):
 

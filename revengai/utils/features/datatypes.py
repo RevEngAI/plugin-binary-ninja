@@ -1,16 +1,6 @@
-from datetime import datetime
-from libbs.artifacts import _art_from_dict
+from libbs.artifacts import _art_from_dict, Function, GlobalVariable, Enum, Struct, Typedef
 from libbs.api import DecompilerInterface
-from libbs.decompilers.binja.interface import BinjaInterface 
-from libbs.artifacts import (
-    Function,
-    FunctionArgument,
-    GlobalVariable,
-    Enum,
-    Struct,
-    Typedef,
-)
-from binaryninja import BinaryView, log_error, log_info, Symbol, SymbolType
+from binaryninja import log_error, log_info
 from typing import List   
 
 def apply_type(deci: DecompilerInterface, artifact, soft_skip=False) -> None | str:
@@ -125,6 +115,4 @@ def apply_data_types(function_addr: int = 0, signature=None, deci: DecompilerInt
             log_info("RevEng.AI | Successfully applied function signature and dependencies")
 
         except Exception as e:
-            log_error(f"RevEng.AI | Error in _apply_data_types: {e}")
-            import traceback
-            log_error(f"RevEng.AI | Traceback: {traceback.format_exc()}")
+            log_info(f"RevEng.AI | Error in _apply_data_types: {e}")

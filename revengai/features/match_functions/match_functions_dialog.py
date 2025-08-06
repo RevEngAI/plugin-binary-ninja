@@ -1,10 +1,9 @@
-from binaryninja import log_info, log_error
-from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QTabWidget, QMessageBox, QCheckBox, QGroupBox, QSlider)
-from PySide6.QtCore import Qt, QCoreApplication
-from revengai.utils.progress_dialog import create_cancellable_progress_dialog
-from revengai.utils.data_thread import DataThread
-from revengai.utils.tab_search import SearchTab
 from .tab_result import ResultTab
+from binaryninja import log_info, log_error
+from PySide6.QtCore import Qt, QCoreApplication
+from revengai.utils import SearchTab, DataThread, create_cancellable_progress_dialog
+from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QTabWidget, QMessageBox, QCheckBox, QGroupBox, QSlider
+
 
 class MatchFunctionsDialog(QDialog):
     def __init__(self, config, match_functions, bv):

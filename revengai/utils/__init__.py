@@ -1,8 +1,56 @@
-from .periodic_check import PeriodicChecker
-from .base_auth_feature import BaseAuthFeature
-from .progress_dialog import create_progress_dialog, create_cancellable_progress_dialog
-from .utils import rename_function, parse_date, get_function_by_addr, get_function_id_by_addr
-from .datatypes import apply_data_types
-from .c_highlighter import CHighlighter
+# Core utilities - most commonly used
+from .core import (
+    rename_function, 
+    parse_date, 
+    get_function_by_addr, 
+    get_function_id_by_addr,
+    DataThread,
+    BaseAuthFeature
+)
 
-__all__ = ['PeriodicChecker', 'BaseAuthFeature', 'create_progress_dialog', 'create_cancellable_progress_dialog', 'rename_function', 'parse_date', 'apply_data_types', 'get_function_by_addr', 'get_function_id_by_addr', 'CHighlighter']
+# UI utilities 
+from .ui import (
+    create_progress_dialog, 
+    create_cancellable_progress_dialog,
+    CHighlighter,
+    SearchTab
+)
+
+# Monitoring utilities
+from .monitoring import (
+    PeriodicChecker,
+    AIDecompilerChecker,
+    AddressChangeMonitor
+)
+
+# Feature utilities
+from .features import (
+    MatchFeature,
+    apply_data_types
+)
+
+# Backward compatibility - maintain the same public API
+__all__ = [
+    # Core utilities (most commonly imported)
+    'rename_function', 
+    'parse_date', 
+    'get_function_by_addr', 
+    'get_function_id_by_addr',
+    'DataThread',
+    'BaseAuthFeature',
+    
+    # UI utilities
+    'create_progress_dialog', 
+    'create_cancellable_progress_dialog',
+    'CHighlighter',
+    'SearchTab',
+    
+    # Monitoring utilities  
+    'PeriodicChecker',
+    'AIDecompilerChecker',
+    'AddressChangeMonitor',
+    
+    # Feature utilities
+    'MatchFeature',
+    'apply_data_types'
+]

@@ -1,10 +1,8 @@
 from binaryninja import log_info, log_error, log_debug
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
-                             QLabel, QLineEdit, QTableWidget, QTableWidgetItem,
-                             QHeaderView, QGroupBox, QSlider, QCheckBox, QMessageBox)
+from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QLineEdit, QTableWidget, QTableWidgetItem,QHeaderView, QGroupBox, QMessageBox)
 from PySide6.QtCore import Qt, QCoreApplication
-from revengai.utils import create_progress_dialog
-from revengai.utils.data_thread import DataThread
+from revengai.utils.ui.progress import create_progress_dialog
+from revengai.utils.core.threading import DataThread
 
 class SearchTab(QWidget):
 
