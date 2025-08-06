@@ -1,5 +1,5 @@
 from binaryninja import PluginCommand, log_info, BinaryView, log_error
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QTabWidget, QLabel, QDockWidget
+from PySide6.QtWidgets import QDockWidget
 from .ai_decompiler import AIDecompiler
 from binaryninjaui import UIContext
 from PySide6.QtCore import Qt
@@ -60,7 +60,10 @@ class AIDecompilerFeature(BaseAuthFeature):
 
     def on_dock_closed(self, visible):
         if not visible:
+            log_info("RevEng.AI | AI Decompiler Dock closed")
             self.dock_widget = None
+            self.widget = None
+            self.ai_decompiler.stop_address_tracking()
 
     def is_valid(self, bv: BinaryView, func):
         return self.config.is_configured == True 
