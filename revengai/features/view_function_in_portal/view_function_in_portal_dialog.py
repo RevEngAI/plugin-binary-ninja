@@ -1,14 +1,8 @@
-from binaryninja import log_error
-from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, 
-                             QPushButton, QLabel, QCheckBox)
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QPixmap
-from PySide6.QtCore import QCoreApplication
-from PySide6.QtWidgets import QMessageBox
-from PySide6.QtWidgets import QProgressBar
-from revengai.utils import create_progress_dialog
-from revengai.utils.data_thread import DataThread
-import os
+from binaryninja import log_error
+from revengai.utils import DataThread
+from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QProgressBar, QMessageBox
+
 
 class ViewFunctionInPortalDialog(QDialog):
     def __init__(self, config, view_function_in_portal, bv, func):

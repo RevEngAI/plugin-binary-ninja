@@ -1,7 +1,7 @@
-from binaryninja import PluginCommand, log_info, BinaryView
 from .choose_source import ChooseSource
-from .choose_source_dialog import ChooseSourceDialog
 from revengai.utils import BaseAuthFeature
+from .choose_source_dialog import ChooseSourceDialog
+from binaryninja import PluginCommand, log_info, BinaryView
 
 class ChooseSourceFeature(BaseAuthFeature):
     def __init__(self, config=None):

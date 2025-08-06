@@ -1,7 +1,8 @@
-from binaryninja import PluginCommand, log_info, BinaryView
-from .view_function_in_portal import ViewFunctionInPortal
-from .view_function_in_portal_dialog import ViewFunctionInPortalDialog
 from revengai.utils import BaseAuthFeature
+from .view_function_in_portal import ViewFunctionInPortal
+from binaryninja import PluginCommand, log_info, BinaryView
+from .view_function_in_portal_dialog import ViewFunctionInPortalDialog
+
 
 class ViewFunctionInPortalFeature(BaseAuthFeature):
     def __init__(self, config=None):
@@ -11,7 +12,7 @@ class ViewFunctionInPortalFeature(BaseAuthFeature):
 
     def register(self):
         PluginCommand.register_for_address(
-            "RevEng.AI\\7 - View Function in Portal",
+            "RevEng.AI\\8 - View Function in Portal",
             "View the current function in the RevEng.AI portal",
             self.show_match_current_function_dialog,
             self.is_valid

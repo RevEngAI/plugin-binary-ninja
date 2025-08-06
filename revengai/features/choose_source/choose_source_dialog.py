@@ -1,11 +1,11 @@
-from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QComboBox, QPushButton, QHBoxLayout
-from PySide6.QtGui import QPixmap
-from PySide6.QtCore import Qt, QCoreApplication
-from revengai.utils.data_thread import DataThread
-from binaryninja import log_error
-from PySide6.QtWidgets import QMessageBox
-from revengai.utils import create_progress_dialog
 import os
+from binaryninja import log_error
+from PySide6.QtGui import QPixmap
+from PySide6.QtWidgets import QMessageBox
+from PySide6.QtCore import Qt, QCoreApplication
+from revengai.utils import create_progress_dialog, DataThread
+from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QComboBox, QPushButton, QHBoxLayout
+
 
 class ChooseSourceDialog(QDialog):
     def __init__(self, config, choose_source, bv):

@@ -1,13 +1,9 @@
-from binaryninja import log_error
-from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, 
-                             QPushButton, QLabel, QCheckBox)
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QPixmap
-from PySide6.QtCore import QCoreApplication
-from PySide6.QtWidgets import QMessageBox
-from revengai.utils import create_progress_dialog
-from revengai.utils.data_thread import DataThread
 import os
+from binaryninja import log_error
+from PySide6.QtGui import QPixmap
+from PySide6.QtCore import Qt, QCoreApplication
+from revengai.utils import create_progress_dialog, DataThread
+from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QCheckBox, QMessageBox
 
 class AutoUnstripDialog(QDialog):
     def __init__(self, config, auto_unstrip, bv):

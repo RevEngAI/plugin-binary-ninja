@@ -1,7 +1,7 @@
-from binaryninja import PluginCommand, log_info, BinaryView
-from .match_current_function import MatchCurrentFunction
-from .match_current_function_dialog import MatchCurrentFunctionDialog
 from revengai.utils import BaseAuthFeature
+from .match_current_function import MatchCurrentFunction
+from binaryninja import PluginCommand, log_info, BinaryView
+from .match_current_function_dialog import MatchCurrentFunctionDialog
 
 class MatchCurrentFunctionFeature(BaseAuthFeature):
     def __init__(self, config=None):

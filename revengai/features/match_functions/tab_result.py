@@ -1,8 +1,7 @@
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem,
-                             QHeaderView, QAbstractItemView, QLineEdit, QLabel)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
 from binaryninja import log_info
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QLineEdit, QLabel
 
 class ResultTab(QWidget):
 

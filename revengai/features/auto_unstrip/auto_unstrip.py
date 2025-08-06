@@ -1,22 +1,12 @@
-from binaryninja import BinaryView, log_info, log_error, Symbol, SymbolType
-from reait.api import RE_authentication, RE_search, RE_nearest_symbols_batch, RE_analyze_functions, RE_name_score, RE_functions_data_types, RE_functions_data_types_poll
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import List, Dict, Tuple
-import math
-from revengai.utils.datatypes import apply_data_types as apply_data_types_util
 import time
-from revengai.utils import rename_function as rename_function_util
+from typing import List, Dict, Tuple
 from libbs.api import DecompilerInterface
+from libbs.artifacts import _art_from_dict, Function
+from binaryninja import BinaryView, log_info, log_error
 from libbs.decompilers.binja.interface import BinjaInterface
-from libbs.artifacts import _art_from_dict
-from libbs.artifacts import (
-    Function,
-    FunctionArgument,
-    GlobalVariable,
-    Enum,
-    Struct,
-    Typedef,
-)
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from revengai.utils import rename_function as rename_function_util, apply_data_types as apply_data_types_util
+from reait.api import RE_search, RE_nearest_symbols_batch, RE_analyze_functions, RE_name_score, RE_functions_data_types, RE_functions_data_types_poll
 
 class AutoUnstrip:
     def __init__(self, config):
@@ -117,7 +107,8 @@ class AutoUnstrip:
                                 break
                            else:
                                 log_info(f"RevEng.AI | Function {function['function_id']} has a score of {function['box_plot']['average']:.2f} for name {new_name_mangled}, renaming")
-                                to_datatypes.append(result)
+                                if data_types:                                  
+                                    to_datatypes.append(result)
                                 if rename_function_util(bv, func_addr, new_name_mangled):
                                     renamed_count += 1
                                 break
@@ -193,8 +184,10 @@ class AutoUnstrip:
             else:
                 message = "After analyzing the binary, no functions were found to be renamed."
             
+            """
             if all_errors:
                 message += f"\nEncountered {len(all_errors)} errors during processing."
+            """
             
             log_info(f"RevEng.AI | {message}")
             return True, message

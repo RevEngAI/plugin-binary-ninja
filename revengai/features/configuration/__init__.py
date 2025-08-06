@@ -1,7 +1,7 @@
-from binaryninja import PluginCommand, log_info, BinaryViewType, log_error
 from .config import Config
 from .config_dialog import ConfigDialog
 from PySide6.QtWidgets import QMessageBox
+from binaryninja import PluginCommand, log_info, BinaryViewType, log_error
 
 class ConfigurationFeature():
     def __init__(self):

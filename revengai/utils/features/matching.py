@@ -1,26 +1,12 @@
 from binaryninja import BinaryView, log_info, log_error
-from reait.api import RE_nearest_symbols_batch, RE_analyze_functions, RE_collections_search, RE_binaries_search, RE_name_score, RE_functions_data_types, RE_functions_data_types_poll
-from typing import List, Dict, Tuple, Optional, Any
+from reait.api import RE_collections_search, RE_binaries_search, RE_functions_data_types, RE_functions_data_types_poll
+from typing import List, Dict, Tuple, Any
 from datetime import datetime
-import os
 import re
 import time
-from libbs.artifacts import _art_from_dict
-from libbs.api import DecompilerInterface
-from libbs.decompilers.binja.interface import BinjaInterface 
+from libbs.artifacts import _art_from_dict, Function, FunctionArgument
 from threading import Event
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from revengai.utils import rename_function as rename_function_util
-from revengai.utils.datatypes import apply_data_types as apply_data_types_util
-from libbs.artifacts import (
-    Function,
-    FunctionArgument,
-    GlobalVariable,
-    Enum,
-    Struct,
-    Typedef,
-)
-#from revengai.utils.datatypes import apply_types, apply_type, _load_many_artifacts_from_list
 
 class MatchFeature:
     def __init__(self, config):

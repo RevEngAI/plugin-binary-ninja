@@ -1,11 +1,10 @@
-from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
-                                 QLineEdit, QPushButton, QMessageBox)
+import os
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
-from binaryninja import log_info, log_error, log_warn
-import os
 from .config_save_thread import ConfigSaveThread
 from revengai.utils import create_progress_dialog
+from binaryninja import log_info, log_error, log_warn
+from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox
 
 class ConfigDialog(QDialog):
     def __init__(self, config):

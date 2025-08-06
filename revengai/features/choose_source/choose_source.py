@@ -1,5 +1,5 @@
-from binaryninja import BinaryView, log_info, log_error
 from reait.api import RE_search
+from binaryninja import BinaryView, log_info, log_error
 
 class ChooseSource:
     def __init__(self, config):

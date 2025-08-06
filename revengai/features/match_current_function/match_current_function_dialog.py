@@ -1,15 +1,8 @@
-from binaryninja import BinaryView, log_info, log_error
-from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton, 
-                             QLabel, QLineEdit, QTableWidget, QTableWidgetItem,
-                             QHeaderView, QTabWidget, QWidget, QMessageBox,
-                             QCheckBox, QDoubleSpinBox, QSpinBox, QGroupBox,
-                             QSplitter, QTextEdit, QProgressBar, QSlider)
-from PySide6.QtCore import Qt, QTimer, QCoreApplication
-from PySide6.QtGui import QIcon
-from revengai.utils import create_progress_dialog, create_cancellable_progress_dialog
-from revengai.utils.data_thread import DataThread
-from revengai.utils.tab_search import SearchTab
 from .tab_result import ResultTab
+from binaryninja import log_info, log_error
+from PySide6.QtCore import Qt, QCoreApplication
+from revengai.utils import create_progress_dialog, create_cancellable_progress_dialog, SearchTab, DataThread
+from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QTabWidget, QMessageBox, QCheckBox, QSpinBox, QGroupBox, QSlider
 
 class MatchCurrentFunctionDialog(QDialog):
     def __init__(self, config, match_current_function, bv, func):
@@ -26,27 +19,17 @@ class MatchCurrentFunctionDialog(QDialog):
         self.resize(1200, 800)
 
         main_layout = QVBoxLayout()
-
         self.tab_widget = QTabWidget()
-        
-        # Footer layout
         footer_layout = self.create_footer_layout()
 
-        # Search tab
         self.search_tab = SearchTab(self.match_current_function, self.bv, self.status_label)
         self.tab_widget.addTab(self.search_tab, "Search")
         
-        # Results tab
         self.results_tab = ResultTab(self.match_current_function, self.bv, self.status_label)
         self.tab_widget.addTab(self.results_tab, "Results")
         
         main_layout.addWidget(self.tab_widget)
-
         main_layout.addLayout(footer_layout)
-
-        # Status bar
-        #self.status_label = QLabel("Ready")
-        #main_layout.addWidget(self.status_label)
 
         self.setLayout(main_layout)
 
@@ -174,10 +157,8 @@ class MatchCurrentFunctionDialog(QDialog):
         self.match_thread.start()   
 
     def start_renaming(self):
-        """Start the current function renaming process"""
         log_info("RevEng.AI | Starting current function renaming process")
         
-        # Check if a result is selected
         if not self.results_tab.selected_result:
             QMessageBox.warning(
                 self,
@@ -187,13 +168,11 @@ class MatchCurrentFunctionDialog(QDialog):
             )
             return
         
-        # Create and show progress dialog
         self.progress = create_progress_dialog(self, "RevEng.AI Rename Selected Function", "Renaming selected function...")
         self.progress.show()
         QCoreApplication.processEvents() 
         self.status_label.setText("Renaming selected function...")
 
-        # Create and start matching thread - pass single result as list for compatibility
         self.rename_thread = DataThread(
             self.match_current_function.rename_function, 
             self.bv, 
@@ -205,8 +184,6 @@ class MatchCurrentFunctionDialog(QDialog):
     def start_fetching_data_types(self):
         log_info("RevEng.AI | Starting current function data type fetching process")
         try:
-
-            # Create and show progress dialog
             self.progress = create_cancellable_progress_dialog(self, "RevEng.AI Fetch Data Types", "Fetching data types...", self.match_current_function.cancel)
             self.progress.show()
             QCoreApplication.processEvents() 
@@ -326,8 +303,3 @@ class MatchCurrentFunctionDialog(QDialog):
                 f"Failed to fetch data types:\n{data}",
                 QMessageBox.Ok
             )
-
-    """
-    def closeEvent(self, event):
-        self.accept() 
-    """ 

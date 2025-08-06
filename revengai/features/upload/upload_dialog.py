@@ -1,10 +1,7 @@
-from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
-                              QComboBox, QPushButton, QRadioButton, QButtonGroup,
-                              QLineEdit, QGroupBox, QFileDialog, QMessageBox)
-from PySide6.QtCore import QCoreApplication
 from binaryninja import log_error
-from revengai.utils import create_progress_dialog
-from revengai.utils.data_thread import DataThread
+from PySide6.QtCore import QCoreApplication
+from revengai.utils import create_progress_dialog, DataThread
+from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QPushButton, QRadioButton, QButtonGroup, QLineEdit, QGroupBox, QFileDialog, QMessageBox
 
 class UploadDialog(QDialog):
     def __init__(self, config, uploader, bv):
