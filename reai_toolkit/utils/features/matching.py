@@ -30,13 +30,18 @@ class MatchFeature:
     
 
     # Search collections/Binaries Process Functions
-    def search_collections(self, bv: BinaryView, search_term: str = ""):
+    def search_items(self, bv: BinaryView, options: Dict[str, Any]):
+        item_type = options.get("item_type")
+        search_term = options.get("search_term")
         try:
-            log_info(f"RevEng.AI | Searching collections with term: '{search_term}'")
+            log_info(f"RevEng.AI | Searching {item_type} with term: '{search_term}'")
             query = self._parse_search_query(search_term)
             log_info(f"RevEng.AI | Query: {query}")
             if not self._is_query_empty(query):
-                items = self._search_collection(query)
+                if item_type == "Collection":
+                    items = self._search_collection(query)
+                else:
+                    items = self._search_binaries(query)
                 log_info(f"RevEng.AI | Items: {items}")
                 if not items:
                     return False, "No items found"
@@ -78,8 +83,8 @@ class MatchFeature:
             del result["tag"]
 
         return result  
-
-    def _search_collections(self, query: Dict[str, Any] = {}):
+    
+    def _search_collection(self, query: Dict[str, Any] = {}):
         try:
             output = []
             page = 1
@@ -100,17 +105,50 @@ class MatchFeature:
                     for collection in api_response.data.results:
                         item = {
                             "name": collection.collection_name,
-                            "id": collection.collection_id,
-                            "scope": "lock.png" if collection.scope == "PRIVATE" else "unlock.png",
+                            "id": str(collection.collection_id),
+                            "scope": collection.scope,
                             "owner": collection.owned_by,
                             "date": collection.last_updated_at.strftime("%m/%d/%Y %H:%M"),
                         }
                         output.append(item)
                     page += 1
-            return True, output
+            return output
         except Exception as e:
             log_error(f"RevEng.AI | Error searching collections: {str(e)}")
-            return False, str(e)
+            return []
+
+    def _search_binaries(self, query: Dict[str, Any] = {}):
+        try:
+            output = []
+            page = 1
+            while True:
+                log_info(f"RevEng.AI | Searching for binaries on page {page}")
+                with revengai.ApiClient(self.config.api_config) as api_client:
+                    api_instance = revengai.SearchApi(api_client)
+                    api_response = api_instance.search_binaries(
+                        page = page, 
+                        page_size = 20, 
+                        partial_name = query.get("binary_name") , 
+                        partial_sha256 = query.get("sha_256_hash"), 
+                        tags = query.get("tags"), 
+                        model_name = query.get("model_name"))
+                    if not len(api_response.data.results):
+                        break
+                    for binary in api_response.data.results:
+                        item = {
+                            "name": binary.binary_name,
+                            "binary_id": str(binary.binary_id),
+                            "analysis_id": str(binary.analysis_id),
+                            "sha_256_hash": binary.sha_256_hash,
+                            "owner": binary.owned_by,
+                            "date": binary.created_at.strftime("%m/%d/%Y %H:%M"),
+                        }
+                        output.append(item)
+                    page += 1
+            return output
+        except Exception as e:
+            log_error(f"RevEng.AI | Error searching collections: {str(e)}")
+            return []
         
     
     def _search_items(self, query: Dict[str, Any] = {}, item_type: str = "Collection") -> None:
@@ -142,10 +180,9 @@ class MatchFeature:
                 
                 items.append({
                     "name": item[name_key],
+                    "id": item[id_key],
                     "icon": icon,
-                    "type": item_type,
                     "date": parse_date(item[date_key]),
-                    "model_name": item["model_name"],
                     "owner": item["owned_by"],
                     "id": item[id_key]
                 })

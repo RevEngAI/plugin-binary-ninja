@@ -7,7 +7,6 @@ from .features import MatchFunctionsFeature
 from .features import MatchCurrentFunctionFeature
 from .features import ViewFunctionInPortalFeature
 from .features import AIDecompilerFeature
-from .features import MatchFunctionsFeatureOld
 class RevengAIPlugin:
     def __init__(self):
         log_info("RevEng.AI | Initializing plugin")
@@ -19,7 +18,6 @@ class RevengAIPlugin:
         self.match_current_function_feature = MatchCurrentFunctionFeature(self.config_feature.get_config())
         self.view_function_in_portal_feature = ViewFunctionInPortalFeature(self.config_feature.get_config())
         self.ai_decompiler_feature = AIDecompilerFeature(self.config_feature.get_config())
-        self.match_functions_feature_old = MatchFunctionsFeatureOld(self.config_feature.get_config())
         self._register_features()
         
     def _register_features(self):
@@ -32,4 +30,3 @@ class RevengAIPlugin:
         self.match_current_function_feature.register()
         self.view_function_in_portal_feature.register()
         self.ai_decompiler_feature.register()
-        self.match_functions_feature_old.register()

@@ -42,12 +42,18 @@ class AIDecompilerDialog(QWidget):
         else:
             log_info(f"RevEng.AI | Stopping address tracking")
             self.ai_decompiler.stop_address_tracking()
+    
+    def clear_tabs(self):
+        for i in range(self.tabs.count()):
+            self.close_tab(i)
  
     def pre_tab_setup(self, bv, func):
         try:
             progress_dialog = create_progress_dialog(self, "RevEng.AI", "Setting up AI Decompiler...")
             progress_dialog.show()
             QCoreApplication.processEvents()
+
+            self.clear_tabs()
 
             function = get_function_by_addr(bv, func)
             tab_name = str(f"0x{function.start:x}")

@@ -6,7 +6,6 @@ from .match_functions import MatchFunctionsFeature
 from .match_current_function import MatchCurrentFunctionFeature
 from .view_function_in_portal import ViewFunctionInPortalFeature    
 from .ai_decompiler import AIDecompilerFeature
-from .match_functions_old import MatchFunctionsFeatureOld
 __all__ = [
     'ConfigurationFeature', 
     'UploadFeature', 
@@ -14,7 +13,6 @@ __all__ = [
     'ChooseSourceFeature', 
     'MatchFunctionsFeature', 
     'MatchCurrentFunctionFeature', 
-    'MatchFunctionsFeatureOld',
     'ViewFunctionInPortalFeature', 
     'AIDecompilerFeature'
     ] 

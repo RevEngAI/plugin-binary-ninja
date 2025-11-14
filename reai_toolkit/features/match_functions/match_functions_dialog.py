@@ -5,7 +5,7 @@ from PySide6.QtCore import Qt, QCoreApplication, QEvent, QRect, QSize
 from reai_toolkit.utils import create_progress_dialog, DataThread
 from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QCheckBox, QMessageBox, QTableWidget, QHeaderView, QAbstractItemView, QTableWidgetItem, QGroupBox, QLineEdit, QGridLayout, QDoubleSpinBox, QWidget, QFrame, QTreeWidget, QTreeWidgetItem, QTreeWidgetItemIterator, QSpacerItem, QSizePolicy
 from reai_toolkit.utils.ui.collections_popup import CollectionsPopup
-from revengai import FunctionMatchingRequest, FunctionMatchingFilters
+from reai_toolkit.utils.ui.binaries_popup import BinariesPopup
 from reai_toolkit.utils import create_cancellable_progress_dialog
 
 class MatchFunctionsDialog(QDialog):
@@ -22,24 +22,37 @@ class MatchFunctionsDialog(QDialog):
         log_info(f"RevEng.AI | Showing collections popup")
         self.collections_popup.show()
 
+    def _show_binaries_popup(self):
+        log_info(f"RevEng.AI | Showing binaries popup")
+        self.binaries_popup.show()
+
     def eventFilter(self, obj, event):
         if event.type() in (QEvent.MouseButtonPress, QEvent.MouseButtonRelease):
             if isinstance(obj, QLineEdit):
                 if obj.objectName() == "edit_collections":
                     self._show_collections_popup()
                 elif obj.objectName() == "edit_binaries":
-                    pass#self.match_functions.search_binaries(self.bv, obj.text())
+                    self._show_binaries_popup()
             else:
                 log_info(f"RevEng.AI | Mouse button press")
         return super().eventFilter(obj, event)
+
+    
+    def _write_selected_collections(self, final_string):
+        self.edit_collections.setText(final_string)
+
+    def _write_selected_binaries(self, final_string):
+        self.edit_binaries.setText(final_string)
     
 
     def init_ui(self):
         self.setWindowTitle("RevEng.AI: Match Functions")
         self.setMinimumSize(1000, 700)
         self.resize(1400, 950)
+        self.selected_collections = []
 
-        self.collections_popup = CollectionsPopup(self.match_functions, self.bv, parent=self)
+        self.collections_popup = CollectionsPopup(self.match_functions, self.bv, parent=self, write_selected_collections=self._write_selected_collections)
+        self.binaries_popup = BinariesPopup(self.match_functions, self.bv, parent=self, write_selected_binaries=self._write_selected_binaries)
 
         layout = QVBoxLayout()
 
@@ -143,18 +156,21 @@ class MatchFunctionsDialog(QDialog):
         self.edit_debug_symbols = QCheckBox("Enable")
         self.edit_debug_symbols.setChecked(False)
 
-        lbl_user_symbols = QLabel("User Debug Symbols")
-        self.edit_user_symbols = QCheckBox("Enable")
-        self.edit_user_symbols.setChecked(False)
+        lbl_datatypes = QLabel("Generate Data Types")
+        self.edit_datatypes = QCheckBox("Enable")
+        self.edit_datatypes.setChecked(True)
 
         button_clear_filters = QPushButton("Reset")
         button_clear_filters.setStyleSheet("""
-            QPushButton {
-                background-color: #71797e;
-                color: white;
-                padding: 6px 12px;
-                border-radius: 4px;
-            }
+                QPushButton {
+                    background-color: #6c757d;
+                    color: white;
+                    padding: 6px 12px;
+                    border-radius: 4px;
+                }
+                QPushButton:hover {
+                    background-color: #5a6268;
+                }
         """)
         #button_clear_filters.clicked.connect(self.clear_filters)
 
@@ -166,8 +182,8 @@ class MatchFunctionsDialog(QDialog):
         filter_grid_layout.addWidget(self.edit_confidence, 1, 1)
         filter_grid_layout.addWidget(lbl_debug_symbols, 1, 2)
         filter_grid_layout.addWidget(self.edit_debug_symbols, 1, 3)
-        filter_grid_layout.addWidget(lbl_user_symbols, 2, 2)
-        filter_grid_layout.addWidget(self.edit_user_symbols, 2, 3)
+        filter_grid_layout.addWidget(lbl_datatypes, 2, 2)
+        filter_grid_layout.addWidget(self.edit_datatypes, 2, 3)
         filter_grid_layout.addWidget(button_clear_filters, 2, 0)
         filter_group.setLayout(filter_grid_layout)
 
@@ -204,17 +220,30 @@ class MatchFunctionsDialog(QDialog):
         button_layout = QHBoxLayout()
         self.save_button = QPushButton("Match Functions")
         self.save_button.setStyleSheet("""
-            QPushButton {
-                background-color: #007bff;
-                color: white;
-                padding: 8px 16px;
-                border-radius: 4px;
-            }
-            QPushButton:hover {
-                background-color: #4400ff;
-            }
+                QPushButton {
+                    background-color: #6c757d;
+                    color: white;
+                    padding: 6px 12px;
+                    border-radius: 4px;
+                }
+                QPushButton:hover {
+                    background-color: #5a6268;
+                }
         """)
         self.save_button.clicked.connect(self.start_matching)
+
+        self.rename_button = QPushButton("Rename Matched Functions")
+        self.rename_button.setEnabled(False)
+        self.rename_button.setStyleSheet("""
+            QPushButton {
+                background-color: #474b4e; 
+                color: white;
+                padding: 6px 12px;
+                border-radius: 4px;
+            }
+        """)
+        self.rename_button.clicked.connect(self.start_renaming)
+
         self.cancel_button = QPushButton("Cancel")
         self.cancel_button.setStyleSheet("""
             QPushButton {
@@ -225,6 +254,7 @@ class MatchFunctionsDialog(QDialog):
         self.cancel_button.clicked.connect(self.reject)
         
         button_layout.addWidget(self.save_button)
+        button_layout.addWidget(self.rename_button)
         button_layout.addWidget(self.cancel_button)
         layout.addLayout(button_layout)
         self.setLayout(layout)
@@ -244,13 +274,13 @@ class MatchFunctionsDialog(QDialog):
             "selected_collections": self.edit_collections.text(),
             "selected_binaries": self.edit_binaries.text(),
             "debug_symbols": self.edit_debug_symbols.isChecked(),
-            "user_symbols": self.edit_user_symbols.isChecked(),
             "populate_table_function": self.populate_results_table
         }
         
         self.match_thread = DataThread(self.match_functions.match_functions, self.bv, options, self.match_functions.clear_cancelled)
         self.match_thread.finished.connect(self.on_matching_finished)
         self.match_thread.start()   
+
 
     def on_matching_finished(self, success, data):
         self.progress.close()
@@ -264,18 +294,46 @@ class MatchFunctionsDialog(QDialog):
             total_count = successful_count + skipped_count + failed_count
             
             #QMessageBox.information(self, "RevEng.AI Match Functions", f"Function matching completed successfully!\nSuccessful matches: {successful_count}\nNot enough confidence: {failed_count}\nSkipped: {skipped_count}\nTotal functions analyzed: {total_count}", QMessageBox.Ok)
-            self.start_fetching_data_types()
+            if successful_count > 0 and self.edit_datatypes.isChecked():
+                self.start_fetching_data_types()
+            else:
+                QMessageBox.information(self, "RevEng.AI Match Functions", f"Function matching completed successfully!\nSuccessful matches: {successful_count}\nNot enough confidence: {failed_count}\nSkipped: {skipped_count}\nTotal functions analyzed: {total_count}", QMessageBox.Ok)
 
         else:
             self.populate_results_table([])
             log_error(f"RevEng.AI | Function matching failed: {data}")
             QMessageBox.critical(self, "RevEng.AI Match Functions Error", f"Failed to match functions:\n{data}", QMessageBox.Ok)
     
+    
     def populate_results_table(self, results):
         self.selected_results.clear()
         
         self.results_table.setRowCount(0)
         self.results_table.setRowCount(len(results))
+
+        if len(results) > 0:
+            self.rename_button.setEnabled(True)
+            self.rename_button.setStyleSheet("""
+                    QPushButton {
+                        background-color: #6c757d;
+                        color: white;
+                        padding: 6px 12px;
+                        border-radius: 4px;
+                    }
+                    QPushButton:hover {
+                        background-color: #5a6268;
+                    }
+            """)
+        else:
+            self.rename_button.setEnabled(False)
+            self.rename_button.setStyleSheet("""
+                QPushButton {
+                    background-color: #474b4e; 
+                    color: white;
+                    padding: 6px 12px;
+                    border-radius: 4px;
+                }
+            """)
         
         for row, match in enumerate(results):
             column_data = [
@@ -300,9 +358,9 @@ class MatchFunctionsDialog(QDialog):
                 item = QTableWidgetItem(value)
                 item.setFlags(item.flags() & ~Qt.ItemIsEditable)
                 if field == "similarity" or field == "confidence":
-                    if float(value[:-1]) >= 90.0:
+                    if float(value[:-1]) >= self.edit_confidence.value():
                         item.setForeground(QColor(0, 255, 0))
-                    elif float(value[:-1]) >= 50.0:
+                    elif float(value[:-1]) >= self.edit_confidence.value() - 20.0:
                         item.setForeground(QColor(255, 255, 0))
                     else:
                         item.setForeground(QColor(255, 0, 0))
@@ -323,6 +381,10 @@ class MatchFunctionsDialog(QDialog):
             
             if match.get("icon_text", "Failed") == "Success":
                 self.selected_results.append(match)
+        log_info(f"RevEng.AI | Selected results: {len(self.selected_results)}")
+        for result in self.selected_results:
+            log_info(f"RevEng.AI | Result: {result}")
+
 
     def start_fetching_data_types(self):
         log_info("RevEng.AI | Starting function data type fetching process")
@@ -350,6 +412,7 @@ class MatchFunctionsDialog(QDialog):
                 self.progress.close()
             QMessageBox.critical(self, "RevEng.AI Fetch Data Types Error", f"Failed to start data type fetching:\n{str(e)}", QMessageBox.Ok)
 
+
     def on_fetching_data_types_finished(self, success, data):
         self.progress.close()
         
@@ -367,3 +430,30 @@ class MatchFunctionsDialog(QDialog):
         else:
             log_error(f"RevEng.AI | Data type fetching failed: {data}")
             QMessageBox.critical(self, "RevEng.AI Fetch Data Types Error", f"Failed to fetch data types:\n{data}", QMessageBox.Ok)
+
+
+    def start_renaming(self):
+        log_info("RevEng.AI | Starting function renaming process")
+        
+        self.progress = create_progress_dialog(self, "RevEng.AI Rename Selected Functions", "Renaming Selected Functions...")
+        self.progress.show()
+        QCoreApplication.processEvents() 
+
+        self.rename_thread = DataThread(
+            self.match_functions.rename_functions, 
+            self.bv, 
+            self.selected_results,
+        )
+        self.rename_thread.finished.connect(self.on_renaming_finished)
+        self.rename_thread.start()  
+
+    
+    def on_renaming_finished(self, success, data):
+        self.progress.close()
+        
+        if success:
+            log_info(f"RevEng.AI | Renaming completed: {data}")
+            QMessageBox.information(self, "RevEng.AI Rename Functions",  f"{data}", QMessageBox.Ok)
+        else:
+            log_error(f"RevEng.AI | Renaming failed: {data}")
+            QMessageBox.critical(self, "RevEng.AI Rename Functions Error", f"Failed to rename functions:\n{data}", QMessageBox.Ok)

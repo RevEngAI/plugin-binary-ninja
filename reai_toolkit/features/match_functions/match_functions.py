@@ -23,27 +23,24 @@ class MatchFunctions(MatchFeature):
             log_info("RevEng.AI | Starting function matching")
 
             confidence_threshold = options.get("confidence_threshold", 90)
-            selected_collections = options.get("selected_collections", "")
-            selected_binaries = options.get("selected_binaries", "")
+            selected_collections_string = options.get("selected_collections", "")
+            selected_collections = []
+            selected_binaries_string = options.get("selected_binaries", "")
+            selected_binaries = []
             debug_symbols = options.get("debug_symbols", False)
-            get_datatypes = options.get("get_datatypes", False)
             result = { "matched": 0, "skipped": 0, "data": [] }
             populate_table_function = options.get("populate_table_function", None)
 
-            """
-            self.filtered_collections = []
-            self.filtered_binaries = []
-            for item in selected_collections:
-                if item["type"] == "Collection":
-                    self.filtered_collections.append(item["id"])
-                else:
-                    self.filtered_binaries.append(item["id"])
-            """
+            if selected_collections_string:
+                selected_collections = [int(c) for c in selected_collections_string.split(",")]
+            if selected_binaries_string:
+                selected_binaries = [int(b) for b in selected_binaries_string.split(",")]
+            
+            log_info(f"RevEng.AI | Selected collections: {selected_collections}")
+            log_info(f"RevEng.AI | Selected binaries: {selected_binaries}")
 
             log_info(f"RevEng.AI | Confidence threshold: {confidence_threshold}")
-            #log_info(f"RevEng.AI | Selected collections: {selected_collections}")
             log_info(f"RevEng.AI | Debug symbols: {debug_symbols}")
-            log_info(f"RevEng.AI | User symbols: {get_datatypes}")
 
             analysis_id = self.config.get_analysis_id(bv)
             if not analysis_id:
@@ -109,8 +106,8 @@ class MatchFunctions(MatchFeature):
             total_matched_functions = 0
             
             filters = revengai.FunctionMatchingFilters.from_dict({
-                #"collections": self.filtered_collections,
-                #"binaries": self.filtered_binaries
+                "collection_ids": selected_collections,
+                "binary_ids": selected_binaries
             })
             
             schema_ann_model = revengai.AnalysisFunctionMatchingRequest.from_dict({
@@ -216,9 +213,6 @@ class MatchFunctions(MatchFeature):
             raise e
 
 
-
-
-    # Rename Functions Process Functions
     def _process_rename_batch(self, chunk: List[Dict], bv: BinaryView, deci: DecompilerInterface = None) -> Tuple[int, int]:
         try:
             log_info(f"RevEng.AI | Processing chunk of {len(chunk)} functions")
@@ -230,18 +224,22 @@ class MatchFunctions(MatchFeature):
                         return 0, 0
                     
                     addr = int(result['function_address'])
-                    if rename_function_util(bv, addr, result['matched_name']):
+                    if rename_function_util(bv, addr, result["matched_function_name"]):
                         renamed_count += 1
+                        
                         if result.get('signature_data', None) is not None:
                             log_info(f"RevEng.AI | Applying data types for 0x{addr:x}")
+                            
                             if deci is not None:
+                                log_info(f"RevEng.AI | Applying data types for 0x{addr:x} with decompiler {deci}")
                                 try:
                                     apply_data_types_util(addr, result['signature_data'], deci)
                                     datatype_count += 1
                                     log_info(f"RevEng.AI | Successfully applied data types for 0x{addr:x}")
                                 except Exception as e:
                                     log_error(f"RevEng.AI | Failed to apply data types for 0x{addr:x}: {str(e)}")
-                                
+                        
+                        
                 except (ValueError, TypeError):
                     log_error(f"RevEng.AI | Invalid function address: {result}")
                     continue
@@ -251,6 +249,7 @@ class MatchFunctions(MatchFeature):
         except Exception as e:
             log_error(f"RevEng.AI | Error processing rename batch: {str(e)}")
             return 0, 0
+
 
     def rename_functions(self, bv: BinaryView, selected_results: List[Dict]) -> List[Dict]:
         """Rename functions from the binary against RevEng.AI database"""

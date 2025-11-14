@@ -15,7 +15,8 @@ from .ui import (
     create_cancellable_progress_dialog,
     CHighlighter,
     SearchTab,
-    CollectionsPopup
+    CollectionsPopup,
+    BinariesPopup
 )
 
 # Monitoring utilities
@@ -48,7 +49,7 @@ __all__ = [
     'CHighlighter',
     'SearchTab',
     'CollectionsPopup',
-    
+    'BinariesPopup',
     # Monitoring utilities  
     'PeriodicChecker',
     'AIDecompilerChecker',
