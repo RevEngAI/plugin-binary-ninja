@@ -1,12 +1,12 @@
 from binaryninja import log_info
-from .features import ConfigurationFeature
-from .features import UploadFeature
-from .features import AutoUnstripFeature
-from .features import ChooseSourceFeature
-from .features import MatchFunctionsFeature
-from .features import MatchCurrentFunctionFeature
-from .features import ViewFunctionInPortalFeature
-from .features import AIDecompilerFeature
+from reai_toolkit.features import ConfigurationFeature
+from reai_toolkit.features import UploadFeature
+from reai_toolkit.features import AutoUnstripFeature
+from reai_toolkit.features import ChooseSourceFeature
+from reai_toolkit.features import MatchFunctionsFeature
+from reai_toolkit.features import MatchCurrentFunctionFeature
+from reai_toolkit.features import ViewFunctionInPortalFeature
+from reai_toolkit.features import AIDecompilerFeature
 class RevengAIPlugin:
     def __init__(self):
         log_info("RevEng.AI | Initializing plugin")

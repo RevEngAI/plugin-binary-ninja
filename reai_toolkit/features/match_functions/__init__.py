@@ -1,6 +1,6 @@
 from reai_toolkit.utils import BaseAuthFeature
-from .match_functions import MatchFunctions
-from .match_functions_dialog import MatchFunctionsDialog
+from reai_toolkit.features.match_functions.match_functions import MatchFunctions
+from reai_toolkit.features.match_functions.match_functions_dialog import MatchFunctionsDialog
 from binaryninja import PluginCommand, log_info, BinaryView
 
 class MatchFunctionsFeature(BaseAuthFeature):

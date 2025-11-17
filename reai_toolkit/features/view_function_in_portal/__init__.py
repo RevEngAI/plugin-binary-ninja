@@ -1,7 +1,7 @@
 from reai_toolkit.utils import BaseAuthFeature
-from .view_function_in_portal import ViewFunctionInPortal
+from reai_toolkit.features.view_function_in_portal.view_function_in_portal import ViewFunctionInPortal
 from binaryninja import PluginCommand, log_info, BinaryView
-from .view_function_in_portal_dialog import ViewFunctionInPortalDialog
+from reai_toolkit.features.view_function_in_portal.view_function_in_portal_dialog import ViewFunctionInPortalDialog
 
 
 class ViewFunctionInPortalFeature(BaseAuthFeature):

@@ -1,6 +1,6 @@
-from .auto_unstrip import AutoUnstrip
+from reai_toolkit.features.auto_unstrip.auto_unstrip import AutoUnstrip
 from reai_toolkit.utils import BaseAuthFeature
-from .auto_unstrip_dialog import AutoUnstripDialog
+from reai_toolkit.features.auto_unstrip.auto_unstrip_dialog import AutoUnstripDialog
 from binaryninja import PluginCommand, log_info, BinaryView
 
 class AutoUnstripFeature(BaseAuthFeature):

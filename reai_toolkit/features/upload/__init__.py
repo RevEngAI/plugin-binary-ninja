@@ -1,5 +1,5 @@
-from .upload import BinaryUploader
-from .upload_dialog import UploadDialog
+from reai_toolkit.features.upload.upload import BinaryUploader
+from reai_toolkit.features.upload.upload_dialog import UploadDialog
 from reai_toolkit.utils import BaseAuthFeature
 from binaryninja import PluginCommand, log_info, BinaryView
 
