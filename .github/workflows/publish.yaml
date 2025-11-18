@@ -65,7 +65,7 @@ jobs:
       - name: Verify vendor folder contents
         run: |
           echo "Listing vendor packages:"
-          find reai_toolkit/vendor -maxdepth 2 -type d | head -n 50
+          find reai_toolkit/vendor -maxdepth 2 -type d 2>/dev/null | head -n 50
         shell: bash
 
       - name: Package plugin for release (cross-platform)
