@@ -78,8 +78,6 @@ jobs:
           zip_path = f"dist/reveng_binary_ninja_plugin_${{ matrix.package-name }}.zip"
           
           with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
-              # Add the entry file to root
-              zf.write("reai_toolkit_entry.py", "reai_toolkit_entry.py")
               
               # Add all files from reai_toolkit/ to root of zip
               for root, dirs, files in os.walk("reai_toolkit"):
