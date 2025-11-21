@@ -2,7 +2,7 @@ import os
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
 from .config_save_thread import ConfigSaveThread
-from reai_toolkit.utils import create_progress_dialog
+from reai_toolkit.utils import create_progress_dialog, DataThread
 from binaryninja import log_info, log_error, log_warn
 from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox
 
@@ -65,8 +65,18 @@ class ConfigDialog(QDialog):
 
         layout.addWidget(host_label)
         layout.addWidget(self.host_input)
-        layout.addSpacing(20)
+        layout.addSpacing(10)
         
+        portal_url_label = QLabel("Portal URL:")
+        portal_url_label.setStyleSheet("font-weight: bold;")
+        self.portal_url_input = QLineEdit()
+        self.portal_url_input.setPlaceholderText("Enter the RevEng.AI portal URL")
+        self.portal_url_input.setText(self.config.portal_url if self.config.portal_url else "")
+
+        layout.addWidget(portal_url_label)
+        layout.addWidget(self.portal_url_input)
+        layout.addSpacing(20)
+
         button_layout = QHBoxLayout()
         self.save_button = QPushButton("Save Configuration")
         self.save_button.setStyleSheet("""
@@ -81,6 +91,21 @@ class ConfigDialog(QDialog):
             }
         """)
         self.save_button.clicked.connect(self.save_config)
+
+        self.retrieve_api_key = QPushButton("Retrieve API Key")
+        self.retrieve_api_key.setStyleSheet("""
+            QPushButton {
+                background-color: #007bff;
+                color: white;
+                padding: 8px 16px;
+                border-radius: 4px;
+            }
+            QPushButton:hover {
+                background-color: #4400ff;
+            }
+        """)
+        self.retrieve_api_key.clicked.connect(self.retrieve_api)
+        
         self.cancel_button = QPushButton("Cancel")
         self.cancel_button.setStyleSheet("""
             QPushButton {
@@ -91,11 +116,23 @@ class ConfigDialog(QDialog):
         self.cancel_button.clicked.connect(self.reject)
         
         button_layout.addWidget(self.save_button)
+        button_layout.addWidget(self.retrieve_api_key)
         button_layout.addWidget(self.cancel_button)
         layout.addLayout(button_layout)
         
         self.setLayout(layout)
+    
+    def retrieve_api(self):
+        self.progress = create_progress_dialog(self, "RevEng.AI Retrieve API Key", "Retrieving API key...")
+        self.progress.show()
 
+        self.retrieve_api_start = DataThread(self.config.retrieve_api_key)
+        self.retrieve_api_start.finished.connect(self._on_retrieve_api_finished)
+        self.retrieve_api_start.start()
+
+    def _on_retrieve_api_finished(self, success, error_message):
+        self.progress.close()
+        
     def save_config(self):
         api_key = self.api_key_input.text().strip()
         host = self.host_input.text().strip()

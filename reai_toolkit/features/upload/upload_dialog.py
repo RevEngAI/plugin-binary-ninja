@@ -66,8 +66,26 @@ class UploadDialog(QDialog):
         
         button_layout = QHBoxLayout()
         self.process_button = QPushButton("Process")
+        self.process_button.setStyleSheet("""
+            QPushButton {
+                background-color: #007bff;
+                color: white;
+                padding: 8px 16px;
+                border-radius: 4px;
+            }
+            QPushButton:hover {
+                background-color: #4400ff;
+            }
+        """)
         self.process_button.clicked.connect(self.upload_binary)
+
         self.cancel_button = QPushButton("Cancel")
+        self.cancel_button.setStyleSheet("""
+            QPushButton {
+                padding: 8px 16px;
+                border-radius: 4px;
+            }
+        """)
         self.cancel_button.clicked.connect(self.reject)
         
         button_layout.addStretch()

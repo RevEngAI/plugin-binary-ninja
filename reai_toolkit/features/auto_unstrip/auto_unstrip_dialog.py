@@ -2,7 +2,7 @@ import os
 from binaryninja import log_error, log_info
 from PySide6.QtGui import QPixmap
 from PySide6.QtCore import Qt, QCoreApplication
-from reai_toolkit.utils import create_progress_dialog, DataThread
+from reai_toolkit.utils import create_progress_dialog, DataThread, create_cancellable_progress_dialog
 from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QCheckBox, QMessageBox, QTableWidget, QHeaderView, QAbstractItemView, QTableWidgetItem
 
 class AutoUnstripDialog(QDialog):
@@ -118,11 +118,11 @@ class AutoUnstripDialog(QDialog):
 
 
     def _auto_unstrip(self):
-        self.progress = create_progress_dialog(self, "RevEng.AI Auto Unstrip", "Auto Unstripping binary...")
+        self.progress = create_cancellable_progress_dialog(self, "RevEng.AI Auto Unstrip", "Auto Unstripping binary...", self.auto_unstrip.cancel)
         self.progress.show()
         QCoreApplication.processEvents()  
         
-        self.auto_unstrip_thread = DataThread(self.auto_unstrip.auto_unstrip, self.bv)
+        self.auto_unstrip_thread = DataThread(self.auto_unstrip.auto_unstrip, self.bv, callback_cancelled_reset = self.auto_unstrip.clear_cancelled)
         self.auto_unstrip_thread.finished.connect(self._on_auto_unstrip_finished)
         self.auto_unstrip_thread.start()
 

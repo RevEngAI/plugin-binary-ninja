@@ -124,6 +124,9 @@ class MatchFunctions(MatchFeature):
                     functions_by_distance = analysis_core_instance.analysis_function_matching(analysis_id, schema_ann_model)
 
                     #################
+                    if self.cancelled.is_set():
+                        return False, "Operation cancelled"
+
                     for function_by_distance in functions_by_distance.matches:
                         try:
                             if len(function_by_distance.matched_functions) == 0:
@@ -205,6 +208,9 @@ class MatchFunctions(MatchFeature):
             #populate_table_function(result["data"])
             result["failed"] = len(analyzed_functions) - matched_count
             result["matched"] = matched_count
+
+            if self.cancelled.is_set():
+                return False, "Operation cancelled"
     
             return True, result
             

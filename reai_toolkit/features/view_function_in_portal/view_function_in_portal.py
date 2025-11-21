@@ -7,7 +7,6 @@ class ViewFunctionInPortal:
     def __init__(self, config):
         self.config = config
 
-
     def view_function_in_portal(self, bv: BinaryView, options: Dict) -> None:
         """Match functions from the binary against RevEng.AI database"""
         try:
@@ -38,7 +37,8 @@ class ViewFunctionInPortal:
                 log_error(f"RevEng.AI | Function {function.name} not found in analyzed functions")
                 raise Exception("Function not found in analyzed functions")
             
-            url = f"https://portal.reveng.ai/function/{analyzed_function.function_id}"
+            url = f"{self.config.portal_url}/function/{analyzed_function.function_id}"
+            log_info(f"RevEng.AI | Opening URL: {url}")
             InteractionHandler().open_url(url)
 
             return True, "Function found in portal"

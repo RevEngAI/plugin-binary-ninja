@@ -4,7 +4,7 @@ from binaryninja import log_info, BinaryView
 class DataThread(QThread):
     finished = Signal(bool, object) 
     
-    def __init__(self, callback_function, bv: BinaryView, args = None, callback_cancelled_reset = None):
+    def __init__(self, callback_function, bv: BinaryView = None, args = None, callback_cancelled_reset = None):
         super().__init__()
         self.callback_function = callback_function
         self.bv = bv
@@ -14,7 +14,9 @@ class DataThread(QThread):
 
     def run(self):
         try:
-            if self.args is None:
+            if self.bv is None:
+                success, content = self.callback_function()
+            elif self.args is None:
                 success, content = self.callback_function(self.bv)
             else:
                 success, content = self.callback_function(self.bv, self.args)

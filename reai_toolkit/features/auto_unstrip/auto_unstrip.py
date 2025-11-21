@@ -8,6 +8,7 @@ from libbs.decompilers.binja.interface import BinjaInterface
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from reai_toolkit.utils import rename_function as rename_function_util, apply_data_types as apply_data_types_util, get_function_by_addr as get_function_by_addr_util
 from revengai import AutoUnstripRequest
+from threading import Event
 
 class AutoUnstrip:
     def __init__(self, config):
@@ -16,6 +17,15 @@ class AutoUnstrip:
         self.base_addr = None
         self.path = None
         self.max_workers = 4 
+        self.cancelled = Event()
+
+    def cancel(self):
+        log_info("RevEng.AI | Cancelling operation...")
+        self.cancelled.set()
+
+    def clear_cancelled(self):
+        log_info("RevEng.AI | Clearing cancelled event...")
+        self.cancelled.clear()
 
     def resolve_data_types(self, to_datatypes: List[Dict], id_to_addr: Dict[int, int], deci: DecompilerInterface, chunk_index: int) -> None:
         try:
@@ -89,6 +99,9 @@ class AutoUnstrip:
             matches = []
             results = []
 
+            if self.cancelled.is_set():
+                return False, "Operation cancelled"
+
             with revengai.ApiClient(self.config.api_config) as api_client:
                 api_instance = revengai.FunctionsCoreApi(api_client)
                 api_response = api_instance.auto_unstrip(analysis_id, auto_unstrip_request)
@@ -110,11 +123,17 @@ class AutoUnstrip:
                     raise Exception(api_response.error)
             for match in matches:
                 try:
+                    if self.cancelled.is_set():
+                        return False, "Operation cancelled"
+
                     function = get_function_by_addr_util(bv, match.function_vaddr)
                     results.append({"virtual_address": match.function_vaddr, "current_name": function.name, "suggested_name": match.suggested_demangled_name})
                 except Exception as e:
                     log_error(f"RevEng.AI | Error getting function by address {match.function_vaddr}: {str(e)}")
                     results.append({"virtual_address": match.function_vaddr, "current_name": "N/A", "suggested_name": match.suggested_demangled_name})
+
+            if self.cancelled.is_set():
+                return False, "Operation cancelled"
 
             return True, results
 
