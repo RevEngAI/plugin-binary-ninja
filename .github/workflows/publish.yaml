@@ -21,6 +21,10 @@ jobs:
             python: "3.10"
             arch: x86_64
             package-name: linux_x86_64
+          - os: ubuntu-24.04-arm
+            python: "3.10"
+            arch: arm64
+            package-name: linux_arm64
           - os: macos-latest
             python: "3.10"
             arch: arm64
@@ -97,7 +101,7 @@ jobs:
 
   attach:
     name: Attach Artifacts to GitHub Release
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     needs: build
 
     steps:
