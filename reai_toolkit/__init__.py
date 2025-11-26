@@ -5,13 +5,16 @@ from binaryninja import log_info, log_error
 import importlib
 
 def delete_module(module_name):
-    to_delete = []
-    for module in sys.modules:
-        if module.startswith(module_name):
-            to_delete.append(module)
-    for module_to_delete in to_delete:
-        log_info(f"RevEng.AI | Deleting module: {module_to_delete}")
-        del sys.modules[module_to_delete]
+    try:
+        to_delete = []
+        for module in sys.modules:
+            if module.startswith(module_name):
+                to_delete.append(module)
+        for module_to_delete in to_delete:
+            log_info(f"RevEng.AI | Deleting module: {module_to_delete}")
+            del sys.modules[module_to_delete]
+    except Exception as e:
+        log_error(f"RevEng.AI | Error deleting module: {e}")
 
 def import_module(module_name):
     try:
@@ -46,7 +49,7 @@ if os.path.exists(vendor_path):
         log_info(f"RevEng.AI | Vendor directory contains {len(contents)} items")
         log_info(f"RevEng.AI | Sample contents: {', '.join(contents[:5])}")
         
-        modules = ["urllib3", "certifi", "revengai"]
+        modules = ["urllib3", "certifi", "revengai", "pydantic", "pydantic_core"]
 
         for module in modules:
             delete_module(module)
