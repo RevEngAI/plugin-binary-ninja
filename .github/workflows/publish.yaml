@@ -81,13 +81,6 @@ jobs:
           PY
         shell: bash
 
-
-      - name: Remove macOS quarantine flags from vendored binaries
-        if: runner.os == 'macOS'
-        run: |
-          chmod -R u+w reai_toolkit/vendor || true
-          find reai_toolkit/vendor -type f \( -name "*.so" -o -name "*.dylib" \) -exec xattr -dr com.apple.quarantine {} \; || true
-
       - name: Upload plugin artifact
         uses: actions/upload-artifact@v4
         with:

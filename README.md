@@ -55,26 +55,19 @@ Expected output locations:
 ```
 Example in Linux...
 ~/.binaryninja/plugins/
-   └── revengai/
+   └── reai_toolkit/
       └── [plugin files...]
 ```
 
-> 🖼️ *Insert screenshot of the correct plugin folder structure*
+### For Mac Users
 
-### Step 3: Install Dependencies
-
-In your system terminal (not inside Binary Ninja), move to the directory with the 'requirements.txt' file and install required dependencies using:
+After installation, run the following command:
 
 ```bash
-pip install -r requirements.txt
+xattr -dr com.apple.quarantine "$HOME/Library/Application Support/Binary Ninja/plugins/reai_toolkit"
 ```
 
-Or directly from within Binary Ninja’s built-in Python terminal:
-
-```python
-import subprocess
-subprocess.check_call(['pip', 'install', '-r', '/path/to/requirements.txt']) # Change to your path to requirements.txt
-```
+It removes the macOS “quarantine” flag (added to files downloaded from the internet), so the system won’t block or warn when loading the plugin.
 
 ---
 
