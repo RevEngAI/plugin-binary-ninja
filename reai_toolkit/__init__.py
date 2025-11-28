@@ -59,15 +59,6 @@ if os.path.exists(vendor_path):
 
         os.environ["SSL_CERT_FILE"] = certifi.where()
         os.environ["REQUESTS_CA_BUNDLE"] = certifi.where()
-
-        modules.remove("revengai")
-        sys.path.remove(vendor_path)
-
-        for module in modules:
-            delete_module(module)
-            import_module(module)
-
-        sys.path.insert(0, vendor_path)
         
     except Exception as e:
         log_error(f"RevEng.AI | Error listing vendor contents: {e}")
