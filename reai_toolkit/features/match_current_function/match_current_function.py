@@ -94,7 +94,7 @@ class MatchCurrentFunction(MatchFeature):
             })
             
             schema_ann_model = revengai.FunctionMatchingRequest.from_dict({
-                "model_id": 12,
+                "model_id": 21,
                 "function_ids": [analyzed_function["function_id"]],
                 "filters": filters,
                 "result_per_function": 20,

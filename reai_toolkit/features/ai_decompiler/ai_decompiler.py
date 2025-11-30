@@ -101,7 +101,7 @@ class AIDecompiler:
             
             log_info(f"RevEng.AI | Polling AI decompilation: {poll_status}")
 
-            if poll_status.lower() == "uninitialised":
+            if poll_status.lower() != "completed" and poll_status.lower() != "failed":
                 log_info(f"RevEng.AI | Starting AI Decompilation for function at 0x{function.start:x}")
 
                 try:
