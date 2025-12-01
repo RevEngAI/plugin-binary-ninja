@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QCoreApplication
 from reai_toolkit.utils.ui.progress import create_progress_dialog
 from reai_toolkit.utils.core.threading import DataThread
-800
+
 class CollectionsPopup(QDialog):
     def __init__(self, match_functions, bv, status_label=None, parent=None, write_selected_collections=None):
         super().__init__(parent)
@@ -33,7 +33,7 @@ class CollectionsPopup(QDialog):
         search_input_layout = QHBoxLayout()
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Enter search term...")
-        self.search_input.returnPressed.connect(self._search_collections)
+        #self.search_input.returnPressed.connect(self._search_collections)
 
         description_label = QLabel(
             "Search (e.g. sha_256_hash:{}, tag:{}, collection_name:{}, function_name:{}, model_name:{})"

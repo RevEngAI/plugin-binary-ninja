@@ -10,8 +10,12 @@ def rename_function(bv: BinaryView, addr: int, new_name: str, data_type: dict = 
         func = bv.get_function_at(addr)
         if not func:
             log_error(f"RevEng.AI | No function found at address {hex(addr)}")
-            return False
-        
+            addr = addr + bv.image_base
+            func = bv.get_function_at(addr)
+            if not func:
+                log_error(f"RevEng.AI | No function found at address {hex(addr)}")
+                return False
+
         if func.name == new_name:
             log_info(f"RevEng.AI | Function at {hex(addr)} already has name {func.name}")
             #return False

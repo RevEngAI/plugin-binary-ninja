@@ -135,6 +135,7 @@ class MatchCurrentFunction(MatchFeature):
                                 continue
                             
                             function = bv.get_function_at(func_addr)
+                            line["function_address"] = func_addr 
                             log_info(f"RevEng.AI | Function: {function} at {func_addr:x}")
 
                             if not line["matched_function_name"] or line["matched_function_name"].startswith(("sub_", "FUN_")):
@@ -152,7 +153,7 @@ class MatchCurrentFunction(MatchFeature):
                                     line["icon_text"] = "Success"
                                     matched_count += 1
                                     
-                            if line not in result["data"] and line["function_address"] != "N/A":
+                            if line not in result["data"]:
                                 result["data"].append(line)
 
                         except Exception as e:
@@ -160,7 +161,6 @@ class MatchCurrentFunction(MatchFeature):
                     #populate_table_function(result["data"])
                     #################
                     if functions_by_distance.status.lower() == "completed":
-                        
                         break
                     elif functions_by_distance.status.lower() == "error":
                         raise Exception("Function matching failed")
