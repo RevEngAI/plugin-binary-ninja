@@ -107,8 +107,6 @@ class Config:
 
     def set_current_info(self, binary_id, analysis_id):
 
-        log_info(f"SET_CURRENT_INFO: {binary_id}, {analysis_id}")
-
         try:
             binary_id = int(binary_id)
             analysis_id = int(analysis_id)
