@@ -74,15 +74,22 @@ class BinaryUploader:
 
                 analyses_client = revengai.AnalysesCoreApi(api_client)
 
+                tags = []
+
+                for tag in options["tags"]:
+                    tags.append(revengai.Tag(name=tag))
+
+                analysis_create_request=revengai.AnalysisCreateRequest(
+                    filename=basename(bv.file.filename),
+                    sha_256_hash=sha_256_hash,
+                    debug_hash=debug_info_hash if options["debug_info"] else None,
+                    tags=tags,
+                    analysis_scope=revengai.AnalysisScope.PRIVATE if options["is_private"] else revengai.AnalysisScope.PUBLIC,
+                    symbols=symbols
+                )
+                
                 analysis_result = analyses_client.create_analysis(
-                    analysis_create_request=revengai.AnalysisCreateRequest(
-                        filename=basename(bv.file.filename),
-                        sha_256_hash=sha_256_hash,
-                        debug_hash=debug_info_hash if options["debug_info"] else None,
-                        tags=options["tags"] or [],
-                        analysis_scope=revengai.AnalysisScope.PUBLIC if options["is_private"] else revengai.AnalysisScope.PRIVATE,
-                        symbols=symbols
-                    )
+                    analysis_create_request=analysis_create_request
                 )
 
                 log_info(f"RevEng.AI | Analysis started successfully. Analysis ID: {analysis_result.data.analysis_id}, Binary ID: {analysis_result.data.binary_id}")

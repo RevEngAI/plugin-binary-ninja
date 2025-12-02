@@ -53,6 +53,7 @@ class PeriodicChecker(QObject):
                             f"RevEng.AI | Scheduled next status check for: {basename(bv.file.filename)} [Binary ID: {bid}] [Analysis ID: {aid}]"
                         )
                 else:
+                    log_info("CALLBACK MADE")
                     callback(bid, aid)
                     log_info(f"RevEng.AI | Analysis completed with status: {status} for Binary ID: {bid} and Analysis ID: {aid}")
             except RequestException as ex:
