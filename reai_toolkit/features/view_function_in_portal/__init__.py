@@ -12,7 +12,7 @@ class ViewFunctionInPortalFeature(BaseAuthFeature):
 
     def register(self):
         PluginCommand.register_for_address(
-            "RevEng.AI\\8 - View Function in Portal",
+            "RevEng.AI\\\u200b\u200b\u200bFunctions\\\u200b\u200bView Function in Portal",
             "View the current function in the RevEng.AI portal",
             self.show_match_current_function_dialog,
             self.is_valid

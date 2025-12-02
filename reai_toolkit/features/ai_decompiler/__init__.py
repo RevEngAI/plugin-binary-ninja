@@ -16,7 +16,7 @@ class AIDecompilerFeature(BaseAuthFeature):
 
     def register(self):
         PluginCommand.register_for_address(
-            "RevEng.AI\\7 - AI Decompiler",
+            "RevEng.AI\\\u200b\u200b\u200bFunctions\\AI Decompiler",
             "Get the AI decompiler for the current function",
             self.show_ai_decompiler_dialog,
             self.is_valid

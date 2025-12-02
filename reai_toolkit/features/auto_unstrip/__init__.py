@@ -11,7 +11,7 @@ class AutoUnstripFeature(BaseAuthFeature):
 
     def register(self):
         PluginCommand.register(
-            "RevEng.AI\\4 - Auto Unstrip",
+            "RevEng.AI\\​Auto Unstrip",
             "Attempt to recover stripped function names",
             self.show_auto_unstrip_dialog,
             self.is_valid

@@ -11,7 +11,7 @@ class MatchFunctionsFeature(BaseAuthFeature):
 
     def register(self):
         PluginCommand.register(
-            "RevEng.AI\\5 - Match Functions",
+            "RevEng.AI\\\u200b\u200bMatch Functions",
             "Search and match functions against RevEng.AI database",
             self.show_match_functions_dialog,
             self.is_valid

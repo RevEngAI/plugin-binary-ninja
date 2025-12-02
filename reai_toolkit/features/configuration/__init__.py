@@ -11,7 +11,7 @@ class ConfigurationFeature():
         
     def register(self):
         PluginCommand.register(
-            "RevEng.AI\\1 - Configure",
+            "RevEng.AI\\​​​​Configure",
             "Configure RevEng.AI settings",
             self.show_configuration
         )

@@ -11,7 +11,7 @@ class UploadFeature(BaseAuthFeature):
 
     def register(self):
         PluginCommand.register(
-            "RevEng.AI\\2 - Process Binary",
+            "RevEng.AI\\Analysis\​Process Binary",
             "Process current binary to RevEng.AI for analysis",
             self.show_upload_dialog,
             self.is_valid
