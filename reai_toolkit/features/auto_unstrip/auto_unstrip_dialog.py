@@ -187,29 +187,30 @@ class AutoUnstripDialog(QDialog):
 
         result = self.results_table.item(row, 1).data(Qt.UserRole)
         log_info(f"RevEng.AI | result: {result}")
-        result_virtual_address = str(result.get("virtual_address", "")) if result else None
+        result_virtual_address = result.get("virtual_address") if result else None
         log_info(f"RevEng.AI | result_virtual_address: {result_virtual_address}")
             
-        if result and result_virtual_address:
+        if result and result_virtual_address is not None:
             log_info(f"RevEng.AI | result_virtual_address: {result_virtual_address}")
-            is_selected = result_virtual_address in [str(r.get("virtual_address", "")) for r in self.selected_results]
+            is_selected = any(r.get("virtual_address") == result_virtual_address for r in self.selected_results)
             log_info(f"RevEng.AI | is_selected: {is_selected}")
 
             checkbox_item = self.results_table.item(row, 0)
             current_state = checkbox_item.checkState()
             
-            new_state = Qt.Unchecked if current_state == Qt.Checked else Qt.Checked
-            checkbox_item.setCheckState(new_state)
+            # Clear row selection
             for col in range(self.results_table.columnCount()):
                 row_item = self.results_table.item(row, col)
                 if row_item:
                     row_item.setSelected(False)
-            if new_state == Qt.Unchecked:
-                log_info(f"RevEng.AI | Removing result from selection: {result.get('virtual_address', '')}")
-                self.selected_results.remove(result)
+            
+            if current_state == Qt.Unchecked:
+                log_info(f"RevEng.AI | Removing result from selection: {result_virtual_address}")
+                self.selected_results = [r for r in self.selected_results if r.get("virtual_address") != result_virtual_address]
             else:
-                log_info(f"RevEng.AI | Adding result from selection: {result.get('virtual_address', '')}")
-                self.selected_results.append(result)
+                log_info(f"RevEng.AI | Adding result to selection: {result_virtual_address}")
+                if not is_selected:
+                    self.selected_results.append(result)
 
                 
             log_info(f"RevEng.AI | Total selected results: {len(self.selected_results)}")
