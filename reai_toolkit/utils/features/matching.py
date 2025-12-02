@@ -87,64 +87,56 @@ class MatchFeature:
     def _search_collection(self, query: Dict[str, Any] = {}):
         try:
             output = []
-            page = 1
-            while True:
-                log_info(f"RevEng.AI | Searching for collections on page {page}")
-                with revengai.ApiClient(self.config.api_config) as api_client:
-                    api_instance = revengai.SearchApi(api_client)
-                    api_response = api_instance.search_collections(
-                        page = page, 
-                        page_size = 20, 
-                        partial_collection_name = query.get("collection_name"), 
-                        partial_binary_name = query.get("binary_name") , 
-                        partial_binary_sha256 = query.get("sha_256_hash"), 
-                        tags = query.get("tags"), 
-                        model_name = query.get("model_name"))
-                    if not len(api_response.data.results):
-                        break
-                    for collection in api_response.data.results:
-                        item = {
-                            "name": collection.collection_name,
-                            "id": str(collection.collection_id),
-                            "scope": collection.scope,
-                            "owner": collection.owned_by,
-                            "date": collection.last_updated_at.strftime("%m/%d/%Y %H:%M"),
-                        }
-                        output.append(item)
-                    page += 1
+            log_info("RevEng.AI | Searching for collections")
+            with revengai.ApiClient(self.config.api_config) as api_client:
+                api_instance = revengai.SearchApi(api_client)
+                api_response = api_instance.search_collections(
+                    page = 1, 
+                    page_size = 20, 
+                    partial_collection_name = query.get("collection_name"), 
+                    partial_binary_name = query.get("binary_name") , 
+                    partial_binary_sha256 = query.get("sha_256_hash"), 
+                    tags = query.get("tags"), 
+                    model_name = query.get("model_name"))
+                for collection in api_response.data.results:
+                    item = {
+                        "name": collection.collection_name,
+                        "id": str(collection.collection_id),
+                        "scope": collection.scope,
+                        "owner": collection.owned_by,
+                        "date": collection.last_updated_at.strftime("%m/%d/%Y %H:%M"),
+                    }
+                    output.append(item)
             return output
         except Exception as e:
             log_error(f"RevEng.AI | Error searching collections: {str(e)}")
             return []
 
     def _search_binaries(self, query: Dict[str, Any] = {}):
+        output = []
         try:
-            output = []
-            page = 1
-            while True:
-                log_info(f"RevEng.AI | Searching for binaries on page {page}")
-                with revengai.ApiClient(self.config.api_config) as api_client:
-                    api_instance = revengai.SearchApi(api_client)
-                    api_response = api_instance.search_binaries(
-                        page = page, 
-                        page_size = 20, 
-                        partial_name = query.get("binary_name") , 
-                        partial_sha256 = query.get("sha_256_hash"), 
-                        tags = query.get("tags"), 
-                        model_name = query.get("model_name"))
-                    if not len(api_response.data.results):
-                        break
-                    for binary in api_response.data.results:
-                        item = {
-                            "name": binary.binary_name,
-                            "binary_id": str(binary.binary_id),
-                            "analysis_id": str(binary.analysis_id),
-                            "sha_256_hash": binary.sha_256_hash,
-                            "owner": binary.owned_by,
-                            "date": binary.created_at.strftime("%m/%d/%Y %H:%M"),
-                        }
-                        output.append(item)
-                    page += 1
+            log_info("RevEng.AI | Searching for binaries")
+            with revengai.ApiClient(self.config.api_config) as api_client:
+                api_instance = revengai.SearchApi(api_client)
+                api_response = api_instance.search_binaries(
+                    page = 1, 
+                    page_size = 20, 
+                    partial_name = query.get("binary_name") , 
+                    partial_sha256 = query.get("sha_256_hash"), 
+                    tags = query.get("tags"), 
+                    model_name = query.get("model_name")
+                    
+                )
+                for binary in api_response.data.results:
+                    item = {
+                        "name": binary.binary_name,
+                        "binary_id": str(binary.binary_id),
+                        "analysis_id": str(binary.analysis_id),
+                        "sha_256_hash": binary.sha_256_hash,
+                        "owner": binary.owned_by,
+                        "date": binary.created_at.strftime("%m/%d/%Y %H:%M"),
+                    }
+                    output.append(item)
             return output
         except Exception as e:
             log_error(f"RevEng.AI | Error searching collections: {str(e)}")
