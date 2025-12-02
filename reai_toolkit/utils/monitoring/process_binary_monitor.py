@@ -53,8 +53,16 @@ class PeriodicChecker(QObject):
                             f"RevEng.AI | Scheduled next status check for: {basename(bv.file.filename)} [Binary ID: {bid}] [Analysis ID: {aid}]"
                         )
                 else:
-                    callback(bid, aid)
-                    log_info(f"RevEng.AI | Analysis completed with status: {status} for Binary ID: {bid} and Analysis ID: {aid}")
+
+                    # Anaysis is complete, fetch model_id and invoke callback
+                    with revengai.ApiClient(api_config) as api_client:
+                        api_instance = revengai.AnalysesCoreApi(api_client)
+                        analysis_details: revengai.BaseResponseBasic = api_instance.get_analysis_basic_info(
+                            analysis_id=analysis_id
+                        )
+                        model_id = analysis_details.data.model_id
+                        callback(bid, aid, model_id)
+                        log_info(f"RevEng.AI | Analysis completed with status: {status} for Binary ID: {bid} | Analysis ID: {aid} | Model ID: {model_id}")
             except RequestException as ex:
                 log_error(f"RevEng.AI | Error getting binary analysis status: {str(ex)}")
             except Exception as ex:

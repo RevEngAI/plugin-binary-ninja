@@ -105,16 +105,18 @@ class Config:
         return json.loads(all_analyses)
     
 
-    def set_current_info(self, binary_id, analysis_id):
+    def set_current_info(self, binary_id, analysis_id, model_id):
 
         try:
             binary_id = int(binary_id)
             analysis_id = int(analysis_id)
+            model_id = int(model_id)
             self.binary_id = binary_id
             self.analysis_id = analysis_id
+            self.model_id = model_id
             
             all_analyses = self.get_all_analyses()
-            all_analyses[self.sha256] = {"binary_id": binary_id, "analysis_id": analysis_id}
+            all_analyses[self.sha256] = {"binary_id": binary_id, "analysis_id": analysis_id, "model_id": model_id}
             settings = Settings()
             
             settings.set_json("revengai.all_analyses", json.dumps(all_analyses))
@@ -142,6 +144,7 @@ class Config:
                 log_info(f"RevEng.AI | Binary found in saved configurations, binary_id: {all_analyses[self.sha256]['binary_id']} and analysis_id: {all_analyses[self.sha256]['analysis_id']}")
                 self.binary_id = all_analyses[self.sha256]["binary_id"]
                 self.analysis_id = all_analyses[self.sha256]["analysis_id"]
+                self.model_id = all_analyses[self.sha256]["model_id"]
             else:
                 log_info(f"RevEng.AI | Binary not found in saved configurations, searching in RevEng.AI...")
                 with revengai.ApiClient(self.api_config) as api_client:
@@ -152,8 +155,9 @@ class Config:
                 else:
                     self.binary_id = api_response.data.results[0].binary_id
                     self.analysis_id = api_response.data.results[0].analysis_id
+                    self.model_id = api_response.data.results[0].model_id
                     log_info(f"RevEng.AI | Binary found in RevEng.AI, binary_id: {self.binary_id}")
-                    self.set_current_info(self.binary_id, self.analysis_id)
+                    self.set_current_info(self.binary_id, self.analysis_id, self.model_id)
             
             return True, ""
 
