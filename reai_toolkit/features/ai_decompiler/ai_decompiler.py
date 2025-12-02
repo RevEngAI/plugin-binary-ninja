@@ -104,19 +104,20 @@ class AIDecompiler:
             if poll_status.lower() != "completed" and poll_status.lower() != "failed":
                 log_info(f"RevEng.AI | Starting AI Decompilation for function at 0x{function.start:x}")
 
-                try:
-                    with revengai.ApiClient(self.config.api_config) as api_client:
-                        api_instance = revengai.FunctionsAIDecompilationApi(api_client)
-                        api_response_status = api_instance.create_ai_decompilation_task(function_id)
-                        log_info(f"RevEng.AI | AI Decompilation task created for function at 0x{function.start:x}")
-                        if not api_response_status.status:
-                            callback(editor, "AI Decompilation failed.")
-                            return
+                if poll_status.lower() == "uninitialised":
+                    try:
+                        with revengai.ApiClient(self.config.api_config) as api_client:
+                            api_instance = revengai.FunctionsAIDecompilationApi(api_client)
+                            api_response_status = api_instance.create_ai_decompilation_task(function_id)
+                            log_info(f"RevEng.AI | AI Decompilation task created for function at 0x{function.start:x}")
+                            if not api_response_status.status:
+                                callback(editor, "AI Decompilation failed.")
+                                return
 
-                except Exception as e:
-                    log_error(f"RevEng.AI | Error beginning AI decompilation: {str(e)}")
-                    callback(editor, "AI Decompilation failed.")
-                    return
+                    except Exception as e:
+                        log_error(f"RevEng.AI | Error beginning AI decompilation: {str(e)}")
+                        callback(editor, "AI Decompilation failed.")
+                        return
 
                 log_info("RevEng.AI | AI Decompilation started")
                 periodic_checker = AIDecompilerChecker()
