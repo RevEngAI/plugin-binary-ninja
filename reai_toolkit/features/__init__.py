@@ -7,6 +7,7 @@ from reai_toolkit.features.match_current_function import MatchCurrentFunctionFea
 from reai_toolkit.features.view_function_in_portal import ViewFunctionInPortalFeature
 from reai_toolkit.features.ai_decompiler import AIDecompilerFeature
 from reai_toolkit.features.detach import DetachAnalysisFeature
+from reai_toolkit.features.view_analysis import ViewAnalysisFeature
 __all__ = [
     'ConfigurationFeature', 
     'UploadFeature', 
@@ -17,4 +18,5 @@ __all__ = [
     'ViewFunctionInPortalFeature', 
     'AIDecompilerFeature'
     'DetachAnalysisFeature'
+    'ViewAnalysisFeature'
     ] 

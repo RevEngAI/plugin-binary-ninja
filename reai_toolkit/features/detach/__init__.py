@@ -9,7 +9,7 @@ class DetachAnalysisFeature(BaseAuthFeature):
 
     def register(self):
         PluginCommand.register(
-            "RevEng.AI\\Analysis\\\u200b\u200bDetach Analysis",
+            "RevEng.AI\\Analysis\\\u200b\u200b\u200bDetach Analysis",
             "Detach from the current RevEng.AI analysis",
             self.verify_detach,
             self.is_valid
