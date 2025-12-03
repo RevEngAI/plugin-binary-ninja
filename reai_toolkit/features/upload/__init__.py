@@ -22,3 +22,6 @@ class UploadFeature(BaseAuthFeature):
         log_info("RevEng.AI | Opening process dialog")
         dialog = UploadDialog(self.config, self.uploader, bv)
         dialog.exec()
+
+    def is_valid(self, bv: BinaryView):
+        return self.config.is_configured == True and self.config.analysis_id is None

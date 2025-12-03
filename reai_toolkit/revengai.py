@@ -7,6 +7,7 @@ from reai_toolkit.features import MatchFunctionsFeature
 from reai_toolkit.features import MatchCurrentFunctionFeature
 from reai_toolkit.features import ViewFunctionInPortalFeature
 from reai_toolkit.features import AIDecompilerFeature
+from reai_toolkit.features import DetachAnalysisFeature
 class RevengAIPlugin:
     def __init__(self):
         log_info("RevEng.AI | Initializing plugin")
@@ -18,6 +19,7 @@ class RevengAIPlugin:
         self.match_current_function_feature = MatchCurrentFunctionFeature(self.config_feature.get_config())
         self.view_function_in_portal_feature = ViewFunctionInPortalFeature(self.config_feature.get_config())
         self.ai_decompiler_feature = AIDecompilerFeature(self.config_feature.get_config())
+        self.detach_analysis_feature = DetachAnalysisFeature(self.config_feature.get_config())
         self._register_features()
         
     def _register_features(self):
@@ -30,3 +32,4 @@ class RevengAIPlugin:
         self.match_current_function_feature.register()
         self.view_function_in_portal_feature.register()
         self.ai_decompiler_feature.register()
+        self.detach_analysis_feature.register()

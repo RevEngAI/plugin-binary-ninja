@@ -22,4 +22,7 @@ class AutoUnstripFeature(BaseAuthFeature):
         log_info("RevEng.AI | Opening AutoUnstrip dialog")
         dialog = AutoUnstripDialog(self.config, self.auto_unstrip, bv)
         dialog.exec_()
+
+    def is_valid(self, bv: BinaryView):
+        return self.config.is_configured == True and self.config.analysis_id is not None
     

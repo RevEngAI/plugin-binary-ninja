@@ -23,3 +23,6 @@ class ChooseSourceFeature(BaseAuthFeature):
         dialog = ChooseSourceDialog(self.config, self.choose_source, bv)
         dialog.exec_()
 
+    def is_valid(self, bv: BinaryView):
+        return self.config.is_configured == True and self.config.analysis_id is None
+

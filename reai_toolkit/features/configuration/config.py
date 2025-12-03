@@ -191,3 +191,21 @@ class Config:
             return all_analyses[self.sha256]["analysis_id"]
         else:
             return 0
+        
+
+    def reset_analysis_data(self, bv: BinaryView):
+        try:
+            self.analysis_id = None
+            self.binary_id = None
+            self.model_id = None
+            self.sha256 = get_sha256(bv.file.filename)
+            all_analyses = self.get_all_analyses()
+            if self.sha256 in all_analyses:
+                del all_analyses[self.sha256]
+                settings = Settings()
+                settings.set_json("revengai.all_analyses", json.dumps(all_analyses))
+                log_info(f"RevEng.AI | Reset analysis data for SHA256: {self.sha256[:8]}...")
+            return True, ""
+        except Exception as e:
+            log_error(f"RevEng.AI | Failed to reset analysis data: {str(e)}")
+            return False, str(e)

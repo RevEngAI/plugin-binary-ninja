@@ -22,3 +22,6 @@ class MatchFunctionsFeature(BaseAuthFeature):
         log_info("RevEng.AI | Opening MatchFunctions dialog")
         dialog = MatchFunctionsDialog(self.config, self.match_functions, bv)
         dialog.exec_() 
+
+    def is_valid(self, bv: BinaryView):
+        return self.config.is_configured == True and self.config.analysis_id is not None

@@ -25,4 +25,4 @@ class ViewFunctionInPortalFeature(BaseAuthFeature):
         dialog.exec_() 
 
     def is_valid(self, bv: BinaryView, func):
-        return self.config.is_configured == True 
+        return self.config.is_configured == True and self.config.analysis_id is not None 
