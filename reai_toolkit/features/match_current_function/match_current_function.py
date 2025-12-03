@@ -116,7 +116,9 @@ class MatchCurrentFunction(MatchFeature):
                             line = {
                                 "icon_path": f"{os.path.dirname(__file__)}/../../images/failed.png",
                                 "icon_text": "Failed",
+                                "source_function_id": function_by_distance.function_id,
                                 "matched_function_name": function_by_distance.matched_functions[0].function_name,
+                                "matched_mangled_name": function_by_distance.matched_functions[0].mangled_name,
                                 "signature": "N/A",
                                 "matched_hash": function_by_distance.matched_functions[0].sha_256_hash,
                                 "matched_binary_name": function_by_distance.matched_functions[0].binary_name,
@@ -191,7 +193,7 @@ class MatchCurrentFunction(MatchFeature):
                         return 0, 0
                     
                     addr = int(result['function_address'])
-                    if rename_function_util(bv, addr, result["matched_function_name"]):
+                    if rename_function_util(self.config, bv, addr, result["matched_function_name"], result["matched_mangled_name"], result["source_function_id"]):
                         renamed_count += 1
                         
                         if result.get('signature_data', None) is not None:
