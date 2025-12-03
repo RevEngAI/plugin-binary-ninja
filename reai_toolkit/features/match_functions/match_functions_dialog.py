@@ -189,21 +189,22 @@ class MatchFunctionsDialog(QDialog):
 
 
         self.results_table = QTableWidget()
-        self.results_table.setColumnCount(8)
+        self.results_table.setColumnCount(9)
         self.results_table.setHorizontalHeaderLabels([
-            "Virtual Address", "Function Name", "Matched Function", "Signature", "Similarity", "Confidence", "Matched Hash", "Matched Binary"
+            "Select", "Virtual Address", "Function Name", "Matched Function", "Signature", "Similarity", "Confidence", "Matched Hash", "Matched Binary"
         ])
         self.results_table.setSelectionMode(QAbstractItemView.NoSelection)
         
         header = self.results_table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(1, QHeaderView.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(2, QHeaderView.Stretch)
-        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.Stretch)
         header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(6, QHeaderView.Stretch)
+        header.setSectionResizeMode(6, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(7, QHeaderView.Stretch)
+        header.setSectionResizeMode(8, QHeaderView.Stretch)
         self.results_table.setAlternatingRowColors(True)
         self.results_table.verticalHeader().setVisible(False)
 
@@ -306,7 +307,8 @@ class MatchFunctionsDialog(QDialog):
     
     
     def populate_results_table(self, results):
-        self.selected_results.clear()
+        # Store results first so _update_selected_results can access them
+        self.all_results = results
         
         self.results_table.setRowCount(0)
         self.results_table.setRowCount(len(results))
@@ -336,6 +338,21 @@ class MatchFunctionsDialog(QDialog):
             """)
         
         for row, match in enumerate(results):
+            # Add checkbox in first column
+            checkbox = QCheckBox()
+            if match.get("icon_text", "Failed") == "Success":
+                checkbox.setChecked(True)
+            else:
+                checkbox.setChecked(False)
+            checkbox.stateChanged.connect(lambda state, m=match: self._on_checkbox_changed(state, m))
+            
+            checkbox_widget = QWidget()
+            checkbox_layout = QHBoxLayout(checkbox_widget)
+            checkbox_layout.addWidget(checkbox)
+            checkbox_layout.setAlignment(Qt.AlignCenter)
+            checkbox_layout.setContentsMargins(0, 0, 0, 0)
+            self.results_table.setCellWidget(row, 0, checkbox_widget)
+            
             column_data = [
                 "function_address",
                 "function_name",
@@ -347,7 +364,7 @@ class MatchFunctionsDialog(QDialog):
                 "matched_binary_name"
             ] 
 
-            for column, field in enumerate(column_data, start=0):
+            for column, field in enumerate(column_data, start=1):
                 value = match.get(field, "N/A")
                 if field == "function_address":
                     if isinstance(value, int):
@@ -373,17 +390,38 @@ class MatchFunctionsDialog(QDialog):
                         icon_path = f"{os.path.dirname(__file__)}/../../images/success.png"
                         item.setToolTip(value)
                     item.setIcon(QIcon(icon_path))
-                    #item.setIconAlignment(Qt.AlignCenter)
                     item.setText("")
                 else:
                     item.setToolTip(value)
                 self.results_table.setItem(row, column, item)
-            
-            if match.get("icon_text", "Failed") == "Success":
-                self.selected_results.append(match)
+        
+        # Initialize selected_results based on checkboxes
+        self._update_selected_results()
+    
+    def _on_checkbox_changed(self, state, match):
+        self._update_selected_results()
+    
+    def _update_selected_results(self):
+        self.selected_results.clear()
+        for row in range(self.results_table.rowCount()):
+            checkbox_widget = self.results_table.cellWidget(row, 0)
+            if checkbox_widget:
+                checkbox = checkbox_widget.findChild(QCheckBox)
+                if checkbox and checkbox.isChecked():
+                    # Get the match data from the row
+                    addr_item = self.results_table.item(row, 1)
+                    if addr_item:
+                        addr_text = addr_item.text()
+                        # Find the corresponding match in all_results
+                        if hasattr(self, 'all_results'):
+                            for match in self.all_results:
+                                match_addr = match.get("function_address", "")
+                                if isinstance(match_addr, int):
+                                    match_addr = f"0x{match_addr:x}"
+                                if match_addr == addr_text:
+                                    self.selected_results.append(match)
+                                    break
         log_info(f"RevEng.AI | Selected results: {len(self.selected_results)}")
-        for result in self.selected_results:
-            log_info(f"RevEng.AI | Result: {result}")
 
 
     def start_fetching_data_types(self):

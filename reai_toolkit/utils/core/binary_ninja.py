@@ -5,7 +5,24 @@ from hashlib import sha256
 from os.path import isfile
 from os import access, R_OK
 
-def rename_function(bv: BinaryView, addr: int, new_name: str, data_type: dict = None) -> bool:
+
+def _rename_in_portal(config: revengai.Configuration, function_id:int, new_name:str, new_mangled_name:str):
+    try:
+        with revengai.ApiClient(config.api_config) as api_client:
+            api_instance = revengai.FunctionsRenamingHistoryApi(api_client)
+            api_instance.rename_function_id(
+                function_id=function_id,
+                function_rename=revengai.FunctionRename(
+                    new_name=new_name,
+                    new_mangled_name=new_mangled_name
+                )
+            )
+            log_info(f"RevEng.AI | Renamed function in portal at {function_id} to {new_name}")
+
+    except Exception as e:
+        log_error(f"RevEng.AI | Error renaming function in portal at {function_id}: {str(e)}")
+
+def rename_function(config, bv: BinaryView, addr: int, new_name: str, new_mangled_name: str, source_function_id: int, data_type: dict = None) -> bool:
     try:
         func = bv.get_function_at(addr)
         if not func:
@@ -22,6 +39,8 @@ def rename_function(bv: BinaryView, addr: int, new_name: str, data_type: dict = 
         
         new_symbol = Symbol(SymbolType.FunctionSymbol, addr, new_name)
         bv.define_user_symbol(new_symbol)
+
+        _rename_in_portal(config, source_function_id, new_name, new_mangled_name)
         
         log_info(f"RevEng.AI | Renamed function at {hex(addr)} to {new_name}")
         return True
