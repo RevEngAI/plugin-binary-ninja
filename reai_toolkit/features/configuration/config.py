@@ -1,7 +1,9 @@
 import json
 import revengai
 from reai_toolkit.utils import get_sha256
+from binaryninja.interaction import InteractionHandler
 from binaryninja import Settings, log_info, log_error, BinaryView
+from reai_toolkit.utils.core.sync import AnalysisSyncService
 
 
 class Config:
@@ -9,6 +11,7 @@ class Config:
         self.settings = Settings()
         self.api_key = ""
         self.host = ""
+        self.portal_url = ""
         self.sha256 = ""
         self.api_config = None
         self.is_configured = False
@@ -29,6 +32,11 @@ class Config:
             "type" : "string",\
             "default" : "",\
             "description" : "API Key"}'))
+        log_info(settings.register_setting("revengai.portal_url", 
+            '{"title" : "Portal URL",\
+            "type" : "string",\
+            "default" : "https://portal.reveng.ai",\
+            "description" : "RevEng.AI Portal URL"}'))
         log_info(settings.register_setting("revengai.all_analyses", 
             '{"title" : "All Analyses",\
             "type" : "object",\
@@ -36,7 +44,7 @@ class Config:
             
         self.host = settings.get_string("revengai.host", None)
         self.api_key = settings.get_string("revengai.api_key", None)
-
+        self.portal_url = settings.get_string("revengai.portal_url", None)
         self.init_api_config()
         #re_conf["user_agent"] = "RevEng.AI BinaryNinja Plugin"
         
@@ -53,7 +61,7 @@ class Config:
             settings = Settings()
             settings.set_string("revengai.host", self.host)
             settings.set_string("revengai.api_key", self.api_key)
-
+            settings.set_string("revengai.portal_url", self.portal_url)
             return True
         
         except Exception as e:
@@ -72,6 +80,7 @@ class Config:
     def clear_config(self):
         self.api_key = ""
         self.host = ""
+        self.portal_url = ""
         self.is_configured = False
         self.save_config() 
 
@@ -97,21 +106,30 @@ class Config:
         return json.loads(all_analyses)
     
 
-    def set_current_info(self, binary_id, analysis_id):
-        binary_id = int(binary_id)
-        self.binary_id = binary_id
-        self.analysis_id = analysis_id
+    def set_current_info(self, binary_id, analysis_id, model_id):
 
-        all_analyses = self.get_all_analyses()
-        all_analyses[self.sha256] = {"binary_id": binary_id, "analysis_id": analysis_id}
-        settings = Settings()
-        
-        settings.set_json("revengai.all_analyses", json.dumps(all_analyses))
-        log_info(f"RevEng.AI | Updated analysis for SHA256: {self.sha256[:8]}... with binary_id: {binary_id} and analysis_id: {analysis_id}")
+        try:
+            binary_id = int(binary_id)
+            analysis_id = int(analysis_id)
+            model_id = int(model_id)
+            self.binary_id = binary_id
+            self.analysis_id = analysis_id
+            self.model_id = model_id
+            
+            all_analyses = self.get_all_analyses()
+            all_analyses[self.sha256] = {"binary_id": binary_id, "analysis_id": analysis_id, "model_id": model_id}
+            settings = Settings()
+            
+            settings.set_json("revengai.all_analyses", json.dumps(all_analyses))
+            log_info(f"RevEng.AI | Updated analysis for SHA256: {self.sha256[:8]}... with binary_id: {binary_id} and analysis_id: {analysis_id}")
+        except Exception as e:
+            log_error(f"RevEng.AI | Failed to set current info: {str(e)}")
 
 
     def init_config(self, bv: BinaryView):
         try:
+            if self.api_key is None or self.api_key == "":
+                raise Exception("RevEng.AI | API key is not set yet, please configure the API key first.")
             if not self.check_auth():
                 self.is_configured = False
                 raise Exception("RevEng.AI | Authentication failed.")
@@ -127,6 +145,8 @@ class Config:
                 log_info(f"RevEng.AI | Binary found in saved configurations, binary_id: {all_analyses[self.sha256]['binary_id']} and analysis_id: {all_analyses[self.sha256]['analysis_id']}")
                 self.binary_id = all_analyses[self.sha256]["binary_id"]
                 self.analysis_id = all_analyses[self.sha256]["analysis_id"]
+                self.model_id = all_analyses[self.sha256]["model_id"]
+                AnalysisSyncService(self).sync_analysis_data(analysis_id=self.analysis_id, bv=bv)
             else:
                 log_info(f"RevEng.AI | Binary not found in saved configurations, searching in RevEng.AI...")
                 with revengai.ApiClient(self.api_config) as api_client:
@@ -137,8 +157,10 @@ class Config:
                 else:
                     self.binary_id = api_response.data.results[0].binary_id
                     self.analysis_id = api_response.data.results[0].analysis_id
+                    self.model_id = api_response.data.results[0].model_id
+                    AnalysisSyncService(self).sync_analysis_data(analysis_id=self.analysis_id, bv=bv)
                     log_info(f"RevEng.AI | Binary found in RevEng.AI, binary_id: {self.binary_id}")
-                    self.set_current_info(self.binary_id, self.analysis_id)
+                    self.set_current_info(self.binary_id, self.analysis_id, self.model_id)
             
             return True, ""
 
@@ -146,6 +168,15 @@ class Config:
             log_error(f"RevEng.AI | Failed to initialize configuration: {str(e)}")
             return False, str(e)
 
+    def retrieve_api_key(self):
+        try:
+            url = f"{str(self.portal_url)}/settings"
+            log_info(f"RevEng.AI | Opening URL: {url}")
+            InteractionHandler().open_url(url)
+            return True, ""
+        except Exception as e:
+            log_error(f"RevEng.AI | Failed to retrieve API key: {str(e)}")
+            return False, str(e)
 
     def get_binary_id(self, bv: BinaryView):
         self.sha256 = get_sha256(bv.file.filename)
@@ -163,3 +194,21 @@ class Config:
             return all_analyses[self.sha256]["analysis_id"]
         else:
             return 0
+        
+
+    def reset_analysis_data(self, bv: BinaryView):
+        try:
+            self.analysis_id = None
+            self.binary_id = None
+            self.model_id = None
+            self.sha256 = get_sha256(bv.file.filename)
+            all_analyses = self.get_all_analyses()
+            if self.sha256 in all_analyses:
+                del all_analyses[self.sha256]
+                settings = Settings()
+                settings.set_json("revengai.all_analyses", json.dumps(all_analyses))
+                log_info(f"RevEng.AI | Reset analysis data for SHA256: {self.sha256[:8]}...")
+            return True, ""
+        except Exception as e:
+            log_error(f"RevEng.AI | Failed to reset analysis data: {str(e)}")
+            return False, str(e)

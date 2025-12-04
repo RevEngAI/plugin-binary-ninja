@@ -1,12 +1,14 @@
 from binaryninja import log_info
-from .features import ConfigurationFeature
-from .features import UploadFeature
-from .features import AutoUnstripFeature
-from .features import ChooseSourceFeature
-from .features import MatchFunctionsFeature
-from .features import MatchCurrentFunctionFeature
-from .features import ViewFunctionInPortalFeature
-from .features import AIDecompilerFeature
+from reai_toolkit.features import ConfigurationFeature
+from reai_toolkit.features import UploadFeature
+from reai_toolkit.features import AutoUnstripFeature
+from reai_toolkit.features import ChooseSourceFeature
+from reai_toolkit.features import MatchFunctionsFeature
+from reai_toolkit.features import MatchCurrentFunctionFeature
+from reai_toolkit.features import ViewFunctionInPortalFeature
+from reai_toolkit.features import AIDecompilerFeature
+from reai_toolkit.features import DetachAnalysisFeature
+from reai_toolkit.features import ViewAnalysisFeature
 class RevengAIPlugin:
     def __init__(self):
         log_info("RevEng.AI | Initializing plugin")
@@ -18,6 +20,8 @@ class RevengAIPlugin:
         self.match_current_function_feature = MatchCurrentFunctionFeature(self.config_feature.get_config())
         self.view_function_in_portal_feature = ViewFunctionInPortalFeature(self.config_feature.get_config())
         self.ai_decompiler_feature = AIDecompilerFeature(self.config_feature.get_config())
+        self.detach_analysis_feature = DetachAnalysisFeature(self.config_feature.get_config())
+        self.view_analysis_feature = ViewAnalysisFeature(self.config_feature.get_config())
         self._register_features()
         
     def _register_features(self):
@@ -30,3 +34,5 @@ class RevengAIPlugin:
         self.match_current_function_feature.register()
         self.view_function_in_portal_feature.register()
         self.ai_decompiler_feature.register()
+        self.detach_analysis_feature.register()
+        self.view_analysis_feature.register()

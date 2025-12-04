@@ -94,7 +94,7 @@ class MatchCurrentFunction(MatchFeature):
             })
             
             schema_ann_model = revengai.FunctionMatchingRequest.from_dict({
-                "model_id": 12,
+                "model_id": self.config.model_id,
                 "function_ids": [analyzed_function["function_id"]],
                 "filters": filters,
                 "result_per_function": 20,
@@ -116,7 +116,9 @@ class MatchCurrentFunction(MatchFeature):
                             line = {
                                 "icon_path": f"{os.path.dirname(__file__)}/../../images/failed.png",
                                 "icon_text": "Failed",
+                                "source_function_id": function_by_distance.function_id,
                                 "matched_function_name": function_by_distance.matched_functions[0].function_name,
+                                "matched_mangled_name": function_by_distance.matched_functions[0].mangled_name,
                                 "signature": "N/A",
                                 "matched_hash": function_by_distance.matched_functions[0].sha_256_hash,
                                 "matched_binary_name": function_by_distance.matched_functions[0].binary_name,
@@ -135,6 +137,7 @@ class MatchCurrentFunction(MatchFeature):
                                 continue
                             
                             function = bv.get_function_at(func_addr)
+                            line["function_address"] = func_addr 
                             log_info(f"RevEng.AI | Function: {function} at {func_addr:x}")
 
                             if not line["matched_function_name"] or line["matched_function_name"].startswith(("sub_", "FUN_")):
@@ -152,7 +155,7 @@ class MatchCurrentFunction(MatchFeature):
                                     line["icon_text"] = "Success"
                                     matched_count += 1
                                     
-                            if line not in result["data"] and line["function_address"] != "N/A":
+                            if line not in result["data"]:
                                 result["data"].append(line)
 
                         except Exception as e:
@@ -160,7 +163,6 @@ class MatchCurrentFunction(MatchFeature):
                     #populate_table_function(result["data"])
                     #################
                     if functions_by_distance.status.lower() == "completed":
-                        
                         break
                     elif functions_by_distance.status.lower() == "error":
                         raise Exception("Function matching failed")
@@ -169,6 +171,9 @@ class MatchCurrentFunction(MatchFeature):
             #populate_table_function(result["data"])
             result["failed"] = len(analyzed_functions) - matched_count
             result["matched"] = matched_count
+
+            if self.cancelled.is_set():
+                return False, "Operation cancelled"
     
             return True, result
             
@@ -188,7 +193,7 @@ class MatchCurrentFunction(MatchFeature):
                         return 0, 0
                     
                     addr = int(result['function_address'])
-                    if rename_function_util(bv, addr, result["matched_function_name"]):
+                    if rename_function_util(self.config, bv, addr, result["matched_function_name"], result["matched_mangled_name"], result["source_function_id"]):
                         renamed_count += 1
                         
                         if result.get('signature_data', None) is not None:

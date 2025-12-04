@@ -1,0 +1,17 @@
+[project]
+name = "plugin-binary-ninja"
+version = "0.0.1"
+requires-python = ">=3.10"
+dependencies = [
+    "revengai>=2.51.0",
+    "urllib3>=2.0.0,<2.3.0",
+    "libbs==2.15.1",
+    "pydantic>=2.12.5",
+]
+
+[tool.uv]
+package = false
+
+dev-dependencies = [
+    "pyside6>=6.8.2",
+]

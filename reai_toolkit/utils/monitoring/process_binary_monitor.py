@@ -6,17 +6,18 @@ from binaryninja import log_info, log_error, BinaryView
 from requests.exceptions import RequestException
 from PySide6.QtWidgets import QMessageBox
 from PySide6.QtCore import QObject, Signal
+from reai_toolkit.utils.core.sync import AnalysisSyncService
 
 class PeriodicChecker(QObject):
-    # Signal for thread-safe UI updates
     update_text_signal = Signal(object, str)
+    sync_service: AnalysisSyncService
     
-    def __init__(self):
+    def __init__(self, config):
         super().__init__()
         self._current_timer: Optional[Timer] = None
         self.number_of_clicks = 0
-        # Connect signal to slot for safe UI updates
         self.update_text_signal.connect(self._update_text_slot)
+        self.sync_service = AnalysisSyncService(config)
 
     def _update_text_slot(self, callback, text):
         """Slot that runs in the main thread to safely update UI"""
@@ -41,7 +42,7 @@ class PeriodicChecker(QObject):
                     api_instance = revengai.AnalysesCoreApi(api_client)
                     api_response = api_instance.get_analysis_status(aid)   
                     status = api_response.data.analysis_status
-                    log_info(f"RevEng.AI | Current status for analysis {aid}: {status}")
+                    log_info(f"RevEng.AI | Current status for analysis [Binary ID: {bid}] [Analysis ID: {aid}]: {status}")
 
                 if status in ("Queued", "Processing"):
                     if bv and bv.file and bv.file.filename:
@@ -52,18 +53,22 @@ class PeriodicChecker(QObject):
                         )
                         self._current_timer.start()
                         log_info(
-                            f"RevEng.AI | Scheduled next status check for: {basename(bv.file.filename)} [Analysis ID: {aid}]"
+                            f"RevEng.AI | Scheduled next status check for: {basename(bv.file.filename)} [Binary ID: {bid}] [Analysis ID: {aid}]"
                         )
                 else:
-                    callback(bid, aid)
-                    log_info(f"RevEng.AI | Analysis completed with status: {status}")
-                    QMessageBox.information(
-                        None,
-                        "RevEng.AI Analysis Complete",
-                        f"Binary analysis completed!",
-                        QMessageBox.Ok
-                    )
 
+                    # Anaysis is complete, fetch model_id and invoke callback
+                    with revengai.ApiClient(api_config) as api_client:
+                        api_instance = revengai.AnalysesCoreApi(api_client)
+                        analysis_details: revengai.BaseResponseBasic = api_instance.get_analysis_basic_info(
+                            analysis_id=analysis_id
+                        )
+                        model_id = analysis_details.data.model_id
+                        callback(bid, aid, model_id)
+
+                        self.sync_service.sync_analysis_data(analysis_id=aid, bv=bv)
+
+                        log_info(f"RevEng.AI | Analysis completed with status: {status} for Binary ID: {bid} | Analysis ID: {aid} | Model ID: {model_id}")
             except RequestException as ex:
                 log_error(f"RevEng.AI | Error getting binary analysis status: {str(ex)}")
             except Exception as ex:
@@ -74,5 +79,5 @@ class PeriodicChecker(QObject):
         self._current_timer = Timer(30, _worker, args=(binary_view, binary_id, analysis_id))
         self._current_timer.start()
         log_info(
-            f"RevEng.AI | Started periodic status check for: {basename(binary_view.file.filename)} [Analysis ID: {analysis_id}]"
+            f"RevEng.AI | Started periodic status check for: {basename(binary_view.file.filename)} [Binary ID: {binary_id}] [Analysis ID: {analysis_id}]"
         )

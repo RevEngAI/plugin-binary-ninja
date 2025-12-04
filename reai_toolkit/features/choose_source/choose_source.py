@@ -1,16 +1,21 @@
 import revengai
 from reai_toolkit.utils import get_sha256
+from reai_toolkit.utils.core.sync import AnalysisSyncService
+from reai_toolkit.features.configuration.config import Config
 from binaryninja import BinaryView, log_info, log_error
 
 class ChooseSource:
-    def __init__(self, config):
-        self.config = config
+    def __init__(self, config: Config):
+        self.config: Config = config
+
+        self.sync_service = AnalysisSyncService(config)
 
     def choose_source(self, bv: BinaryView, chose: str): 
         try:
             log_info(f"RevEng.AI | Item: {chose}")
             new_binary_id = int(chose.split("Binary ID: ")[1].split(" -")[0])
             new_analysis_id = int(chose.split("Analysis ID: ")[1].split(" -")[0])
+            new_model_id = int(chose.split("Model_ID: ")[1])
             analysis_id = self.config.get_analysis_id(bv)
             binary_id = self.config.get_binary_id(bv)
             if binary_id == new_binary_id and analysis_id == new_analysis_id:
@@ -19,7 +24,10 @@ class ChooseSource:
             
             log_info(f"RevEng.AI | Changing Binary ID: {binary_id} to {new_binary_id}")
             log_info(f"RevEng.AI | Changing Analysis ID: {analysis_id} to {new_analysis_id}")
-            self.config.set_current_info(new_binary_id, new_analysis_id)
+            log_info(f"RevEng.AI | Changing Model ID to {new_model_id}")
+            self.config.set_current_info(new_binary_id, new_analysis_id, new_model_id)
+
+            self.sync_service.sync_analysis_data(analysis_id=new_analysis_id, bv=bv)
 
             return True, "Binary ID changed successfully."
         except Exception as e:
@@ -45,7 +53,7 @@ class ChooseSource:
             
             options = []
             for result in results:
-                option = f"Name: {result.binary_name[:10]}{'...' if len(result.binary_name) > 10 else ''} - Binary ID: {result.binary_id} - Analysis ID: {result.analysis_id} - Model: {result.model_name} - Created at: {result.created_at.strftime('%m/%d/%Y %H:%M')}"
+                option = f"Name: {result.binary_name[:10]}{'...' if len(result.binary_name) > 10 else ''} - Binary ID: {result.binary_id} - Analysis ID: {result.analysis_id} - Model: {result.model_name} - Created at: {result.created_at.strftime('%m/%d/%Y %H:%M')} - Model_ID: {result.model_id}"
                 log_info(f"RevEng.AI | Analysis: {option}")
                 if result.binary_id == binary_id and result.analysis_id == analysis_id:
                     options.insert(0, option)

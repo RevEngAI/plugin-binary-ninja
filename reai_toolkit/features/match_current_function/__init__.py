@@ -1,7 +1,7 @@
 from reai_toolkit.utils import BaseAuthFeature
-from .match_current_function import MatchCurrentFunction
+from reai_toolkit.features.match_current_function.match_current_function import MatchCurrentFunction
 from binaryninja import PluginCommand, log_info, BinaryView
-from .match_current_function_dialog import MatchCurrentFunctionDialog
+from reai_toolkit.features.match_current_function.match_current_function_dialog import MatchCurrentFunctionDialog
 
 class MatchCurrentFunctionFeature(BaseAuthFeature):
     def __init__(self, config=None):
@@ -11,7 +11,7 @@ class MatchCurrentFunctionFeature(BaseAuthFeature):
 
     def register(self):
         PluginCommand.register_for_address(
-            "RevEng.AI\\6 - Match Current Function",
+            "RevEng.AI\\\u200b\u200b\u200bFunctions\\\u200bMatch Current Function",
             "Search and match the current function against RevEng.AI database",
             self.show_match_current_function_dialog,
             self.is_valid
@@ -24,4 +24,4 @@ class MatchCurrentFunctionFeature(BaseAuthFeature):
         dialog.exec_() 
 
     def is_valid(self, bv: BinaryView, func):
-        return self.config.is_configured == True 
+        return self.config.is_configured == True and self.config.analysis_id is not None 

@@ -1,7 +1,22 @@
-<p align="center"><img src="./images/banner.png" ></p>
-Official Binary Ninja Plugin for RevEng.AI
+# RevEng.AI Binary Ninja Plugin
 
-### Features Supported
+[Discord](https://discord.com/invite/ZwQTvzfSbA)
+
+### AI Assisted Binary Analysis
+
+Released as open source by RevEng.ai - https://reveng.ai
+
+## Description
+
+The RevEng.AI Binary Ninja plugins allows you to interact with our API from within Binary Ninja.
+This allows you to upload your currently open binary for analysis,
+and use it for Binary Code Similarity to help you Reverse Engineer stripped binaries.
+
+## Table of contents
+
+- [Key Features](#key-features)
+
+### Key features
 
 This plugin brings the power of RevEng.AI directly into Binary Ninja. Here are the main features currently supported:
 
@@ -13,9 +28,8 @@ This plugin brings the power of RevEng.AI directly into Binary Ninja. Here are t
 - **Match Unique Function**: Compare and match a single function from your current binary with those in your existing collections.
 - **View Function in Portal**: Convenient shortcut to explore the function within the platform interface.
 
----
 
-## Installation & Running 🚀
+## Installation
 
 ### Step 1: Locate Binary Ninja Plugins Folder
 
@@ -41,26 +55,19 @@ Expected output locations:
 ```
 Example in Linux...
 ~/.binaryninja/plugins/
-   └── revengai/
+   └── reai_toolkit/
       └── [plugin files...]
 ```
 
-> 🖼️ *Insert screenshot of the correct plugin folder structure*
+### For Mac Users
 
-### Step 3: Install Dependencies
-
-In your system terminal (not inside Binary Ninja), move to the directory with the 'requirements.txt' file and install required dependencies using:
+After installation, run the following command:
 
 ```bash
-pip install -r requirements.txt
+xattr -dr com.apple.quarantine "$HOME/Library/Application Support/Binary Ninja/plugins/reai_toolkit"
 ```
 
-Or directly from within Binary Ninja’s built-in Python terminal:
-
-```python
-import subprocess
-subprocess.check_call(['pip', 'install', '-r', '/path/to/requirements.txt']) # Change to your path to requirements.txt
-```
+It removes the macOS “quarantine” flag (added to files downloaded from the internet), so the system won’t block or warn when loading the plugin.
 
 ---
 

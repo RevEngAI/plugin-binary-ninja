@@ -1,6 +1,6 @@
-from .auto_unstrip import AutoUnstrip
+from reai_toolkit.features.auto_unstrip.auto_unstrip import AutoUnstrip
 from reai_toolkit.utils import BaseAuthFeature
-from .auto_unstrip_dialog import AutoUnstripDialog
+from reai_toolkit.features.auto_unstrip.auto_unstrip_dialog import AutoUnstripDialog
 from binaryninja import PluginCommand, log_info, BinaryView
 
 class AutoUnstripFeature(BaseAuthFeature):
@@ -11,7 +11,7 @@ class AutoUnstripFeature(BaseAuthFeature):
 
     def register(self):
         PluginCommand.register(
-            "RevEng.AI\\4 - Auto Unstrip",
+            "RevEng.AI\\​Auto Unstrip",
             "Attempt to recover stripped function names",
             self.show_auto_unstrip_dialog,
             self.is_valid
@@ -22,4 +22,7 @@ class AutoUnstripFeature(BaseAuthFeature):
         log_info("RevEng.AI | Opening AutoUnstrip dialog")
         dialog = AutoUnstripDialog(self.config, self.auto_unstrip, bv)
         dialog.exec_()
+
+    def is_valid(self, bv: BinaryView):
+        return self.config.is_configured == True and self.config.analysis_id is not None
     

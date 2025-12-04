@@ -1,9 +1,9 @@
 from PySide6.QtCore import Qt
 from binaryninjaui import UIContext
-from .ai_decompiler import AIDecompiler
+from reai_toolkit.features.ai_decompiler.ai_decompiler import AIDecompiler
 from PySide6.QtWidgets import QDockWidget
 from reai_toolkit.utils import BaseAuthFeature
-from .ai_decompiler_dialog import AIDecompilerDialog
+from reai_toolkit.features.ai_decompiler.ai_decompiler_dialog import AIDecompilerDialog
 from binaryninja import PluginCommand, log_info, BinaryView, log_error
 
 class AIDecompilerFeature(BaseAuthFeature):
@@ -16,7 +16,7 @@ class AIDecompilerFeature(BaseAuthFeature):
 
     def register(self):
         PluginCommand.register_for_address(
-            "RevEng.AI\\7 - AI Decompiler",
+            "RevEng.AI\\\u200b\u200b\u200bFunctions\\AI Decompiler",
             "Get the AI decompiler for the current function",
             self.show_ai_decompiler_dialog,
             self.is_valid
@@ -66,4 +66,4 @@ class AIDecompilerFeature(BaseAuthFeature):
             self.ai_decompiler.stop_address_tracking()
 
     def is_valid(self, bv: BinaryView, func):
-        return self.config.is_configured == True 
+        return self.config.is_configured == True and self.config.analysis_id is not None 

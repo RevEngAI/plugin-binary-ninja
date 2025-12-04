@@ -1,5 +1,5 @@
-from .config import Config
-from .config_dialog import ConfigDialog
+from reai_toolkit.features.configuration.config import Config
+from reai_toolkit.features.configuration.config_dialog import ConfigDialog
 from PySide6.QtWidgets import QMessageBox
 from binaryninja import PluginCommand, log_info, BinaryViewType, log_error
 
@@ -11,7 +11,7 @@ class ConfigurationFeature():
         
     def register(self):
         PluginCommand.register(
-            "RevEng.AI\\1 - Configure",
+            "RevEng.AI\\​​​​Configure",
             "Configure RevEng.AI settings",
             self.show_configuration
         )

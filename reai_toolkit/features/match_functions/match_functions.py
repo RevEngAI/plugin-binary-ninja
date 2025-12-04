@@ -124,6 +124,9 @@ class MatchFunctions(MatchFeature):
                     functions_by_distance = analysis_core_instance.analysis_function_matching(analysis_id, schema_ann_model)
 
                     #################
+                    if self.cancelled.is_set():
+                        return False, "Operation cancelled"
+
                     for function_by_distance in functions_by_distance.matches:
                         try:
                             if len(function_by_distance.matched_functions) == 0:
@@ -134,7 +137,9 @@ class MatchFunctions(MatchFeature):
                                 "icon_text": "Failed",
                                 "function_address": function_by_distance.matched_functions[0].function_vaddr,
                                 "function_name": "N/A",
+                                "source_function_id": function_by_distance.function_id,
                                 "matched_function_name": function_by_distance.matched_functions[0].function_name,
+                                "matched_mangled_name": function_by_distance.matched_functions[0].mangled_name,
                                 "signature": "N/A",
                                 "matched_hash": function_by_distance.matched_functions[0].sha_256_hash,
                                 "matched_binary_name": function_by_distance.matched_functions[0].binary_name,
@@ -205,6 +210,9 @@ class MatchFunctions(MatchFeature):
             #populate_table_function(result["data"])
             result["failed"] = len(analyzed_functions) - matched_count
             result["matched"] = matched_count
+
+            if self.cancelled.is_set():
+                return False, "Operation cancelled"
     
             return True, result
             
@@ -213,7 +221,7 @@ class MatchFunctions(MatchFeature):
             raise e
 
 
-    def _process_rename_batch(self, chunk: List[Dict], bv: BinaryView, deci: DecompilerInterface = None) -> Tuple[int, int]:
+    def _process_rename_batch(self, config, chunk: List[Dict], bv: BinaryView, deci: DecompilerInterface = None) -> Tuple[int, int]:
         try:
             log_info(f"RevEng.AI | Processing chunk of {len(chunk)} functions")
             renamed_count = 0
@@ -224,7 +232,7 @@ class MatchFunctions(MatchFeature):
                         return 0, 0
                     
                     addr = int(result['function_address'])
-                    if rename_function_util(bv, addr, result["matched_function_name"]):
+                    if rename_function_util(config, bv, addr, result["matched_function_name"], result["matched_mangled_name"], result["source_function_id"]):
                         renamed_count += 1
                         
                         if result.get('signature_data', None) is not None:
@@ -264,7 +272,7 @@ class MatchFunctions(MatchFeature):
 
             with ThreadPoolExecutor(max_workers=4) as executor:
                 future_to_chunk = {
-                    executor.submit(self._process_rename_batch, chunk, bv, deci): i 
+                    executor.submit(self._process_rename_batch, self.config, chunk, bv, deci): i 
                     for i, chunk in enumerate(chunks)
                 }
 

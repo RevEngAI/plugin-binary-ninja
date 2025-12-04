@@ -3,6 +3,7 @@ from pathlib import Path
 from binaryninja import BinaryView, log_info, log_error
 from os.path import basename
 from reai_toolkit.utils import PeriodicChecker
+from reai_toolkit.utils.core.sync import AnalysisSyncService
 
 class BinaryUploader:
     def __init__(self, config):
@@ -74,20 +75,27 @@ class BinaryUploader:
 
                 analyses_client = revengai.AnalysesCoreApi(api_client)
 
+                tags = []
+
+                for tag in options["tags"]:
+                    tags.append(revengai.Tag(name=tag))
+
+                analysis_create_request=revengai.AnalysisCreateRequest(
+                    filename=basename(bv.file.filename),
+                    sha_256_hash=sha_256_hash,
+                    debug_hash=debug_info_hash if options["debug_info"] else None,
+                    tags=tags,
+                    analysis_scope=revengai.AnalysisScope.PRIVATE if options["is_private"] else revengai.AnalysisScope.PUBLIC,
+                    symbols=symbols
+                )
+
                 analysis_result = analyses_client.create_analysis(
-                    analysis_create_request=revengai.AnalysisCreateRequest(
-                        filename=basename(bv.file.filename),
-                        sha_256_hash=sha_256_hash,
-                        debug_hash=debug_info_hash if options["debug_info"] else None,
-                        tags=options["tags"] or [],
-                        analysis_scope=revengai.AnalysisScope.PUBLIC if options["is_private"] else revengai.AnalysisScope.PRIVATE,
-                        symbols=symbols
-                    )
+                    analysis_create_request=analysis_create_request
                 )
 
                 log_info(f"RevEng.AI | Analysis started successfully. Analysis ID: {analysis_result.data.analysis_id}, Binary ID: {analysis_result.data.binary_id}")
 
-            PeriodicChecker().start_checking(bv, analysis_result.data.analysis_id, analysis_result.data.binary_id, self.config.set_current_info, self.config.api_config)
+            PeriodicChecker(self.config).start_checking(bv, analysis_result.data.analysis_id, analysis_result.data.binary_id, self.config.set_current_info, self.config.api_config)
 
             return True, "Analysis started successfully."
             

@@ -1,6 +1,6 @@
 from reai_toolkit.utils import BaseAuthFeature
-from .match_functions import MatchFunctions
-from .match_functions_dialog import MatchFunctionsDialog
+from reai_toolkit.features.match_functions.match_functions import MatchFunctions
+from reai_toolkit.features.match_functions.match_functions_dialog import MatchFunctionsDialog
 from binaryninja import PluginCommand, log_info, BinaryView
 
 class MatchFunctionsFeature(BaseAuthFeature):
@@ -11,7 +11,7 @@ class MatchFunctionsFeature(BaseAuthFeature):
 
     def register(self):
         PluginCommand.register(
-            "RevEng.AI\\5 - Match Functions",
+            "RevEng.AI\\\u200b\u200bMatch Functions",
             "Search and match functions against RevEng.AI database",
             self.show_match_functions_dialog,
             self.is_valid
@@ -22,3 +22,6 @@ class MatchFunctionsFeature(BaseAuthFeature):
         log_info("RevEng.AI | Opening MatchFunctions dialog")
         dialog = MatchFunctionsDialog(self.config, self.match_functions, bv)
         dialog.exec_() 
+
+    def is_valid(self, bv: BinaryView):
+        return self.config.is_configured == True and self.config.analysis_id is not None

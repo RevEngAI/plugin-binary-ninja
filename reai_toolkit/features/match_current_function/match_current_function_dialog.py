@@ -13,6 +13,7 @@ class MatchCurrentFunctionDialog(QDialog):
         super().__init__()
         self.config = config
         self.match_functions = match_functions
+        self.results = []
         self.selected_results = []
         self.bv = bv
         self.func = func
@@ -206,6 +207,8 @@ class MatchCurrentFunctionDialog(QDialog):
         header.setSectionResizeMode(6, QHeaderView.Stretch)
         self.results_table.setAlternatingRowColors(True)
         self.results_table.verticalHeader().setVisible(False)
+        self.results_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.results_table.setSelectionMode(QTableWidget.SingleSelection)
 
         #functions_group_layout.addLayout(search_input_layout)
         functions_group_layout.addWidget(filter_group)
@@ -307,15 +310,16 @@ class MatchCurrentFunctionDialog(QDialog):
     
     def populate_results_table(self, results):
         self.selected_results.clear()
+        self.results = results
         
         self.results_table.setRowCount(0)
         self.results_table.setRowCount(len(results))
-
+        
         try:
             self.results_table.itemChanged.disconnect()
         except TypeError:
             pass  # No connections to disconnect
-
+        
         if len(results) > 0:
             self.rename_button.setEnabled(True)
             self.rename_button.setStyleSheet("""
@@ -397,6 +401,8 @@ class MatchCurrentFunctionDialog(QDialog):
         self.results_table.cellClicked.connect(self.on_checkbox_changed)
 
     def on_checkbox_changed(self, item_or_row, column=None):
+        log_info(f"RevEng.AI | on_checkbox_changed: {item_or_row}, {column}")
+        
         """Handle checkbox changes to ensure only one is selected at a time"""
         if isinstance(item_or_row, QTableWidgetItem):  # Called from itemChanged
             row = item_or_row.row()
@@ -405,12 +411,14 @@ class MatchCurrentFunctionDialog(QDialog):
             row = item_or_row
             is_checkbox = column == 0
 
+        log_info(f"RevEng.AI | row: {row}, is_checkbox: {is_checkbox}")
+        log_info(f"RevEng.AI | len(self.results): {len(self.results)}")
         # Get the match data for this row
-        if row < len(self.current_matches):
-            match = self.current_matches[row]
+        if row < len(self.results):
+            match = self.results[row]
         else:
             return
-            
+        log_info(f"RevEng.AI | match: {match}")
         if match:
             checkbox_item = self.results_table.item(row, 0)
             current_state = checkbox_item.checkState()
@@ -432,11 +440,11 @@ class MatchCurrentFunctionDialog(QDialog):
                             other_checkbox.setCheckState(Qt.Unchecked)
                 
                 # Update selected result with the current match
-                self.selected_result = match
-                log_info(f"RevEng.AI | Selected function match: {match.get('matched_name', 'Unknown')}")
+                self.selected_results = [match]
+                log_info(f"RevEng.AI | Selected function match: {match.get('matched_function_name', 'Unknown')}")
             else:
                 # If unchecked, clear selection
-                self.selected_result = {}
+                self.selected_result = []
                 log_info(f"RevEng.AI | Deselected function match")
 
     def start_fetching_data_types(self):
@@ -446,14 +454,14 @@ class MatchCurrentFunctionDialog(QDialog):
             self.progress = create_cancellable_progress_dialog(self, "RevEng.AI Fetch Data Types", "Fetching data types...", self.match_functions.cancel)
             self.progress.show()
             QCoreApplication.processEvents() 
-
+            """
             if not hasattr(self, 'selected_results') or not self.selected_results:
                 log_error("RevEng.AI | No current matches available for data type fetching")
                 self.progress.close()
                 QMessageBox.warning(self,"RevEng.AI Fetch Data Types","No function matches available. Please run 'Fetch Results' first.", QMessageBox.Ok)
                 return
-
-            self.fetch_data_types_thread = DataThread(self.match_functions.fetch_data_types, self.bv, self.selected_results, self.match_functions.clear_cancelled)
+            """
+            self.fetch_data_types_thread = DataThread(self.match_functions.fetch_data_types, self.bv, self.results, self.match_functions.clear_cancelled)
             self.fetch_data_types_thread.finished.connect(self.on_fetching_data_types_finished)
             self.fetch_data_types_thread.start()
 
@@ -491,6 +499,7 @@ class MatchCurrentFunctionDialog(QDialog):
         self.progress = create_progress_dialog(self, "RevEng.AI Rename Selected Functions", "Renaming Selected Functions...")
         self.progress.show()
         QCoreApplication.processEvents() 
+        log_info(f"RevEng.AI | Selected results: {len(self.selected_results)}")
 
         self.rename_thread = DataThread(
             self.match_functions.rename_functions, 
