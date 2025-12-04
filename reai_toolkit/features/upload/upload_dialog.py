@@ -9,13 +9,12 @@ class UploadDialog(QDialog):
         self.config = config
         self.uploader = uploader
         self.bv = bv
-        self.model_thread = None
         self.upload_thread = None
         self.progress = None
         self.init_ui()
         
     def init_ui(self):
-        self.setWindowTitle("RevEng.AI: Process Binary")
+        self.setWindowTitle("RevEng.AI: Create new")
         self.setMinimumWidth(500)
         
         layout = QVBoxLayout()
@@ -40,13 +39,6 @@ class UploadDialog(QDialog):
         tags_layout.addWidget(tags_label)
         tags_layout.addWidget(self.tags_input)
         layout.addLayout(tags_layout)
-        
-        model_layout = QHBoxLayout()
-        model_label = QLabel("AI Model:")
-        self.model_combo = QComboBox()
-        model_layout.addWidget(model_label)
-        model_layout.addWidget(self.model_combo)
-        layout.addLayout(model_layout)
         
         privacy_group = QGroupBox("Privacy:")
         privacy_layout = QVBoxLayout()
@@ -97,35 +89,8 @@ class UploadDialog(QDialog):
         
         self.show()
         QCoreApplication.processEvents()
-        
-        self.load_models()
-
-    def load_models(self):
-        self.progress = create_progress_dialog(self, "RevEng.AI", "Loading available models...")
-        self.progress.show()
-        QCoreApplication.processEvents()
-        
-        self.model_thread = DataThread(self.uploader.get_models, self.bv)
-        self.model_thread.finished.connect(self._on_models_loaded)
-        self.model_thread.start()
-
-    def _on_models_loaded(self, success, models):
-        self.progress.close()
-        self.model_combo.clear()
-        if success:
-            for model in models:
-                self.model_combo.addItem(model)
-        else:
-            log_error(f"RevEng.AI | Failed to load models: {models}")
-            QMessageBox.critical(self, "RevEng.AI Model Loading Error", f"Failed to load available models: {models}", QMessageBox.Ok)
-            self.reject()
             
     def upload_binary(self):
-        if not self.model_combo.currentText():
-            log_error("RevEng.AI | Model selection is required")
-            QMessageBox.warning(self, "RevEng.AI Upload", "Please select a model for analysis.", QMessageBox.Ok)
-            return
-            
         self.progress = create_progress_dialog(self, "RevEng.AI Upload", "Uploading binary to RevEng.AI...")
         self.progress.show()
         QCoreApplication.processEvents()
@@ -153,6 +118,5 @@ class UploadDialog(QDialog):
         return {
             'debug_info': self.debug_combo.currentText(),
             'tags': [tag.strip() for tag in self.tags_input.text().split(',') if tag.strip()],
-            'model': self.model_combo.currentText(),
             'is_private': self.private_radio.isChecked()
         } 
