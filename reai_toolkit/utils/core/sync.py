@@ -76,6 +76,12 @@ class AnalysisSyncService:
                 if new_name is None:
                     continue
 
+                # Check if function has a user-defined symbol, skip if it does
+                if func.symbol and func.symbol.auto == False:
+                    log_info(f"RevEng.AI | Skipping user-defined function at 0x{start_ea:x}: {func.name}")
+                    local_function_vaddrs_matched.add(start_ea)
+                    continue
+
                 # Rename local function
                 new_symbol = Symbol(SymbolType.FunctionSymbol, start_ea, new_name)
                 bv.define_user_symbol(new_symbol)
