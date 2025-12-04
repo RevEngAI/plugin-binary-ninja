@@ -7,8 +7,9 @@ class AnalysisSyncService:
 
     sdk_config: Configuration
 
-    def __init__(self, sdk_config: Configuration):
-        self.sdk_config = sdk_config
+    def __init__(self, config):
+        self.config = config
+        self.sdk_config = config.api_config
 
     def _get_current_base_address(self, bv) -> int:
         return bv.start
@@ -46,7 +47,6 @@ class AnalysisSyncService:
                 analysis_id=analysis_id
             )
             func_map = function_map.data.function_maps
-            self.safe_put_function_mapping(func_map=func_map)
             return func_map
 
     def _match_functions(
@@ -108,15 +108,9 @@ class AnalysisSyncService:
         """
         Syncs the analysis data until completion or failure.
         """
-        response = self.api_request_returning(
-            fn=lambda: self._fetch_function_map(analysis_id=analysis_id)
-        )
+        response = self._fetch_function_map(analysis_id=analysis_id)
 
-        if not response.success:
-            self.call_callback(generic_return=response)
-            return
-
-        function_mapping: FunctionMapping = response.data
+        function_mapping: FunctionMapping = response
 
         self._match_functions(func_map=function_mapping, bv=bv)
 

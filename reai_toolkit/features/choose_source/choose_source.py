@@ -1,11 +1,12 @@
 import revengai
 from reai_toolkit.utils import get_sha256
 from reai_toolkit.utils.core.sync import AnalysisSyncService
+from reai_toolkit.features.configuration.config import Config
 from binaryninja import BinaryView, log_info, log_error
 
 class ChooseSource:
-    def __init__(self, config):
-        self.config = config
+    def __init__(self, config: Config):
+        self.config: Config = config
 
         self.sync_service = AnalysisSyncService(config)
 
