@@ -1,10 +1,14 @@
 import revengai
 from reai_toolkit.utils import get_sha256
+from reai_toolkit.utils.core.sync import AnalysisSyncService
+from reai_toolkit.features.configuration.config import Config
 from binaryninja import BinaryView, log_info, log_error
 
 class ChooseSource:
-    def __init__(self, config):
-        self.config = config
+    def __init__(self, config: Config):
+        self.config: Config = config
+
+        self.sync_service = AnalysisSyncService(config)
 
     def choose_source(self, bv: BinaryView, chose: str): 
         try:
@@ -22,6 +26,8 @@ class ChooseSource:
             log_info(f"RevEng.AI | Changing Analysis ID: {analysis_id} to {new_analysis_id}")
             log_info(f"RevEng.AI | Changing Model ID to {new_model_id}")
             self.config.set_current_info(new_binary_id, new_analysis_id, new_model_id)
+
+            self.sync_service.sync_analysis_data(analysis_id=new_analysis_id, bv=bv)
 
             return True, "Binary ID changed successfully."
         except Exception as e:

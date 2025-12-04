@@ -6,15 +6,18 @@ from binaryninja import log_info, log_error, BinaryView
 from requests.exceptions import RequestException
 from PySide6.QtWidgets import QMessageBox
 from PySide6.QtCore import QObject, Signal
+from reai_toolkit.utils.core.sync import AnalysisSyncService
 
 class PeriodicChecker(QObject):
     update_text_signal = Signal(object, str)
+    sync_service: AnalysisSyncService
     
-    def __init__(self):
+    def __init__(self, config):
         super().__init__()
         self._current_timer: Optional[Timer] = None
         self.number_of_clicks = 0
         self.update_text_signal.connect(self._update_text_slot)
+        self.sync_service = AnalysisSyncService(config)
 
     def _update_text_slot(self, callback, text):
         """Slot that runs in the main thread to safely update UI"""
@@ -62,6 +65,9 @@ class PeriodicChecker(QObject):
                         )
                         model_id = analysis_details.data.model_id
                         callback(bid, aid, model_id)
+
+                        self.sync_service.sync_analysis_data(analysis_id=aid, bv=bv)
+
                         log_info(f"RevEng.AI | Analysis completed with status: {status} for Binary ID: {bid} | Analysis ID: {aid} | Model ID: {model_id}")
             except RequestException as ex:
                 log_error(f"RevEng.AI | Error getting binary analysis status: {str(ex)}")

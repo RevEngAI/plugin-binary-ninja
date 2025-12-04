@@ -37,7 +37,7 @@ def rename_function(config, bv: BinaryView, addr: int, new_name: str, new_mangle
             log_info(f"RevEng.AI | Function at {hex(addr)} already has name {func.name}")
             #return False
         
-        new_symbol = Symbol(SymbolType.FunctionSymbol, addr, new_name)
+        new_symbol = Symbol(SymbolType.FunctionSymbol, addr, new_mangled_name)
         bv.define_user_symbol(new_symbol)
 
         _rename_in_portal(config, source_function_id, new_name, new_mangled_name)
