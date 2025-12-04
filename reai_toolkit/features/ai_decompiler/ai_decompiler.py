@@ -87,7 +87,7 @@ class AIDecompiler:
             callback = options.get("callback")
             analysis_id = self.config.get_analysis_id(bv)
             if not analysis_id:
-                raise Exception("Analysis not found. Please choose one using 'Choose Source' feature.")
+                raise Exception("Analysis not found. Please choose one using the 'Attach to existing' feature.")
             function_id = get_function_id_by_addr_util(bv, function.start, self.config)
 
             with revengai.ApiClient(self.config.api_config) as api_client:

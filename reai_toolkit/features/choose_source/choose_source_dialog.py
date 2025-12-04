@@ -16,7 +16,7 @@ class ChooseSourceDialog(QDialog):
         self.init_ui()
 
     def init_ui(self):
-        self.setWindowTitle("RevEng.AI: Choose Source")
+        self.setWindowTitle("RevEng.AI: Attach to existing")
         self.setMinimumWidth(500)
         layout = QVBoxLayout()
 
@@ -106,10 +106,10 @@ class ChooseSourceDialog(QDialog):
     def _choose_source(self):
         if not self.combo.currentText():
             log_error("RevEng.AI | Source selection is required")
-            QMessageBox.warning(self, "RevEng.AI Choose Source", "Please select a source for analysis.", QMessageBox.Ok)
+            QMessageBox.warning(self, "RevEng.AI: Attach to exiting", "Please select a source for analysis.", QMessageBox.Ok)
             return
             
-        self.progress = create_progress_dialog(self, "RevEng.AI Choose Source", "Choosing source...")
+        self.progress = create_progress_dialog(self, "RevEng.AI: Attach to existing", "Choosing source...")
         self.progress.show()
         QCoreApplication.processEvents()
 
@@ -121,9 +121,9 @@ class ChooseSourceDialog(QDialog):
         self.progress.close()
         
         if success:
-            QMessageBox.information(self, "RevEng.AI Choose Source", message, QMessageBox.Ok)
+            QMessageBox.information(self, "RevEng.AI: Attach to existing", message, QMessageBox.Ok)
             self.accept()
         else:
-            log_error(f"RevEng.AI | Failed to choose source: {message}")
-            QMessageBox.critical(self, "RevEng.AI Choose Source Error", f"Failed to choose source: {message}", QMessageBox.Ok)
+            log_error(f"RevEng.AI | Failed to attach to existing analysis: {message}")
+            QMessageBox.critical(self, "RevEng.AI: Attach to existing", f"Failed to choose source: {message}", QMessageBox.Ok)
             self.reject()

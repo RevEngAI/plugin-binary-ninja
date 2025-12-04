@@ -44,7 +44,7 @@ class MatchFunctions(MatchFeature):
 
             analysis_id = self.config.get_analysis_id(bv)
             if not analysis_id:
-                raise Exception("Analysis not found. Please choose one using 'Choose Source' feature.")
+                raise Exception("Analysis not found. Please choose one using the 'Attach to existing' feature.")
             
             if self.cancelled.is_set():
                 return False, "Operation cancelled"

@@ -31,7 +31,7 @@ class ChooseSource:
 
             return True, "Binary ID changed successfully."
         except Exception as e:
-            log_error(f"RevEng.AI | Failed to choose source: {str(e)}")
+            log_error(f"RevEng.AI | Failed to attach to existing analysis: {str(e)}")
             return False, str(e)
 
     def get_analysis(self, bv: BinaryView):
