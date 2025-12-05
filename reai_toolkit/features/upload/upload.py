@@ -95,7 +95,7 @@ class BinaryUploader:
 
                 log_info(f"RevEng.AI | Analysis started successfully. Analysis ID: {analysis_result.data.analysis_id}, Binary ID: {analysis_result.data.binary_id}")
 
-            PeriodicChecker(self.config).start_checking(bv, analysis_result.data.analysis_id, analysis_result.data.binary_id, self.config.set_current_info, self.config)
+            PeriodicChecker(self.config).start_checking(bv, analysis_result.data.analysis_id, analysis_result.data.binary_id, self.config.set_current_info)
 
             return True, "Analysis started successfully."
             

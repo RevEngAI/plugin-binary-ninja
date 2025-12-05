@@ -17,7 +17,7 @@ class AIDecompilerDialog(QWidget):
         self.init_ui()
 
     def init_ui(self):
-        self.setWindowTitle("RevEng.AI: AI Decompiler")
+        self.setWindowTitle("RevEng.AI: AI Decompilation")
         layout = QVBoxLayout()
         self.setLayout(layout)
         layout.addWidget(self.tabs)
@@ -49,7 +49,7 @@ class AIDecompilerDialog(QWidget):
  
     def pre_tab_setup(self, bv, func):
         try:
-            progress_dialog = create_progress_dialog(self, "RevEng.AI", "Setting up AI Decompiler...")
+            progress_dialog = create_progress_dialog(self, "RevEng.AI", "Setting up AI Decompilation...")
             progress_dialog.show()
             QCoreApplication.processEvents()
 
@@ -70,7 +70,7 @@ class AIDecompilerDialog(QWidget):
             layout = QVBoxLayout()
 
             editor = QPlainTextEdit()
-            editor.setPlainText("Starting AI Decompiler...")
+            editor.setPlainText("Starting AI Decompilation...")
             editor.setReadOnly(True)
 
             editor.show()
