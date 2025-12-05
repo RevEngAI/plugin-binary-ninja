@@ -109,7 +109,7 @@ class AutoUnstrip:
             if self.cancelled.is_set():
                 return False, "Operation cancelled"
 
-            with revengai.ApiClient(self.config.api_config) as api_client:
+            with self.config.create_api_client() as api_client:
                 api_instance = revengai.FunctionsCoreApi(api_client)
                 api_response = api_instance.auto_unstrip(analysis_id, auto_unstrip_request)
                 

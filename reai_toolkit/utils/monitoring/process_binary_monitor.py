@@ -35,10 +35,10 @@ class PeriodicChecker(QObject):
             log_info("RevEng.AI | Stopped periodic status check")
         
 
-    def start_checking(self, binary_view: BinaryView, analysis_id: int, binary_id: int, callback, api_config, interval: float = 60) -> None:
+    def start_checking(self, binary_view: BinaryView, analysis_id: int, binary_id: int, callback, config, interval: float = 60) -> None:
         def _worker(bv: BinaryView, bid: int, aid: int):
             try:
-                with revengai.ApiClient(api_config) as api_client:
+                with config.create_api_client() as api_client:
                     api_instance = revengai.AnalysesCoreApi(api_client)
                     api_response = api_instance.get_analysis_status(aid)   
                     status = api_response.data.analysis_status
@@ -58,7 +58,7 @@ class PeriodicChecker(QObject):
                 else:
 
                     # Anaysis is complete, fetch model_id and invoke callback
-                    with revengai.ApiClient(api_config) as api_client:
+                    with config.create_api_client() as api_client:
                         api_instance = revengai.AnalysesCoreApi(api_client)
                         analysis_details: revengai.BaseResponseBasic = api_instance.get_analysis_basic_info(
                             analysis_id=analysis_id

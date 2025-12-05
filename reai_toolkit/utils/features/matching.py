@@ -88,7 +88,7 @@ class MatchFeature:
         try:
             output = []
             log_info("RevEng.AI | Searching for collections")
-            with revengai.ApiClient(self.config.api_config) as api_client:
+            with self.config.create_api_client() as api_client:
                 api_instance = revengai.SearchApi(api_client)
                 api_response = api_instance.search_collections(
                     page = 1, 
@@ -116,7 +116,7 @@ class MatchFeature:
         output = []
         try:
             log_info("RevEng.AI | Searching for binaries")
-            with revengai.ApiClient(self.config.api_config) as api_client:
+            with self.config.create_api_client() as api_client:
                 api_instance = revengai.SearchApi(api_client)
                 api_response = api_instance.search_binaries(
                     page = 1, 
@@ -184,7 +184,7 @@ class MatchFeature:
             page = 1
             while True:
                 log_info(f"RevEng.AI | Searching for collections on page {page}")
-                with revengai.ApiClient(self.config.api_config) as api_client:
+                with self.config.create_api_client() as api_client:
                     api_instance = revengai.SearchApi(api_client)
                     api_response = api_instance.search_collections(
                         page = page, 
@@ -220,7 +220,7 @@ class MatchFeature:
             page = 1
             while True:
                 log_info(f"RevEng.AI | Searching for binaries on page {page}")
-                with revengai.ApiClient(self.config.api_config) as api_client:
+                with self.config.create_api_client() as api_client:
                     api_instance = revengai.SearchApi(api_client)
                     api_response = api_instance.search_binaries(
                         page = page, 
@@ -262,7 +262,7 @@ class MatchFeature:
             if self.cancelled.is_set():
                 return []
 
-            with revengai.ApiClient(self.config.api_config) as api_client:
+            with self.config.create_api_client() as api_client:
                 api_instance = revengai.FunctionsDataTypesApi(api_client)
                 function_data_types_params = revengai.FunctionDataTypesParams.from_dict({"function_ids": function_ids}) 
                 api_response = api_instance.generate_function_data_types_for_functions(function_data_types_params)
@@ -275,7 +275,7 @@ class MatchFeature:
             while True:
                 if self.cancelled.is_set():
                     return []
-                with revengai.ApiClient(self.config.api_config) as api_client:
+                with self.config.create_api_client() as api_client:
                     api_instance = revengai.FunctionsDataTypesApi(api_client)
                     api_response = api_instance.list_function_data_types_for_functions(function_ids=function_ids).to_dict()
                     log_info("The response of FunctionsDataTypesApi->list_function_data_types_for_functions:\n")

@@ -44,7 +44,7 @@ class ChooseSource:
             
             sha256 = get_sha256(bv.file.filename)
 
-            with revengai.ApiClient(self.config.api_config) as api_client:
+            with self.config.create_api_client() as api_client:
                 api_instance = revengai.SearchApi(api_client)
                 api_response = api_instance.search_binaries(partial_sha256 = sha256, user_files_only = True)
                 results = api_response.data.results

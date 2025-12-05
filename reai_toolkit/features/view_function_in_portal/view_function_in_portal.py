@@ -26,7 +26,7 @@ class ViewFunctionInPortal:
             if not analysis_id:
                 raise Exception("Analysis not found. Please choose one using the 'Attach to existing' feature.")
 
-            with revengai.ApiClient(self.config.api_config) as api_client:
+            with self.config.create_api_client() as api_client:
                 api_instance = revengai.AnalysesResultsMetadataApi(api_client)
                 api_response = api_instance.get_functions_list(analysis_id)
                 analyzed_functions = api_response.data.functions
