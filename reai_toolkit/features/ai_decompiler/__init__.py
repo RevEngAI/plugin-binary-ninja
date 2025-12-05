@@ -16,8 +16,8 @@ class AIDecompilerFeature(BaseAuthFeature):
 
     def register(self):
         PluginCommand.register_for_address(
-            "RevEng.AI\\\u200b\u200b\u200bFunctions\\AI Decompiler",
-            "Get the AI decompiler for the current function",
+            "RevEng.AI\\\u200b\u200b\u200bFunctions\\AI Decompilation",
+            "Get the AI decompilation for the current function",
             self.show_ai_decompiler_dialog,
             self.is_valid
         )
@@ -44,9 +44,9 @@ class AIDecompilerFeature(BaseAuthFeature):
                     self.widget.pre_tab_setup(bv, func)
                 return
             
-            self.dock_widget = QDockWidget("RevEng.AI | AI Decompiler", main_win)
+            self.dock_widget = QDockWidget("RevEng.AI | AI Decompilation", main_win)
             self.widget = AIDecompilerDialog(self.config, self.ai_decompiler, bv, func)
-            self.dock_widget.setObjectName("RevEng.AI | AI Decompiler")
+            self.dock_widget.setObjectName("RevEng.AI | AI Decompilation")
             self.dock_widget.setWidget(self.widget)
             main_win.addDockWidget(Qt.RightDockWidgetArea, self.dock_widget)
             self.dock_widget.raise_()

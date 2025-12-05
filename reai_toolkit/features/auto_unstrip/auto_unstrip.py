@@ -83,7 +83,14 @@ class AutoUnstrip:
         try:
             renamed_count = 0
             for option in options:
-                if rename_function_util(bv, option['virtual_address'], option['suggested_name']):
+                if rename_function_util(
+                        self.config,
+                        bv,
+                        option['virtual_address'],
+                        option['suggested_name'],
+                        option['suggested_mangled_name'],
+                        option['source_function_id'],
+                ):
                     renamed_count += 1
             return True, f"Successfully renamed {renamed_count} functions"
         except Exception as e:
@@ -102,7 +109,7 @@ class AutoUnstrip:
             if self.cancelled.is_set():
                 return False, "Operation cancelled"
 
-            with revengai.ApiClient(self.config.api_config) as api_client:
+            with self.config.create_api_client() as api_client:
                 api_instance = revengai.FunctionsCoreApi(api_client)
                 api_response = api_instance.auto_unstrip(analysis_id, auto_unstrip_request)
                 
@@ -122,15 +129,28 @@ class AutoUnstrip:
                 else:
                     raise Exception(api_response.error)
             for match in matches:
+                print(match, flush=True)
                 try:
                     if self.cancelled.is_set():
                         return False, "Operation cancelled"
 
                     function = get_function_by_addr_util(bv, match.function_vaddr)
-                    results.append({"virtual_address": match.function_vaddr, "current_name": function.name, "suggested_name": match.suggested_demangled_name})
+                    results.append({
+                        "virtual_address": match.function_vaddr,
+                        "current_name": function.name,
+                        "suggested_name": match.suggested_demangled_name,
+                        "suggested_mangled_name": match.suggested_name,
+                        "source_function_id": match.function_id,
+                    })
                 except Exception as e:
                     log_error(f"RevEng.AI | Error getting function by address {match.function_vaddr}: {str(e)}")
-                    results.append({"virtual_address": match.function_vaddr, "current_name": "N/A", "suggested_name": match.suggested_demangled_name})
+                    results.append({
+                        "virtual_address": match.function_vaddr,
+                        "current_name": "N/A",
+                        "suggested_name": match.suggested_demangled_name,
+                        "suggested_mangled_name": match.suggested_name,
+                        "source_function_id": match.function_id,
+                    })
 
             if self.cancelled.is_set():
                 return False, "Operation cancelled"

@@ -87,10 +87,10 @@ class AIDecompiler:
             callback = options.get("callback")
             analysis_id = self.config.get_analysis_id(bv)
             if not analysis_id:
-                raise Exception("Analysis not found. Please choose one using 'Choose Source' feature.")
+                raise Exception("Analysis not found. Please choose one using the 'Attach to existing' feature.")
             function_id = get_function_id_by_addr_util(bv, function.start, self.config)
 
-            with revengai.ApiClient(self.config.api_config) as api_client:
+            with self.config.create_api_client() as api_client:
                 api_instance = revengai.FunctionsAIDecompilationApi(api_client)
                 api_response_status = api_instance.get_ai_decompilation_task_status(function_id)
                 log_info(f"RevEng.AI | AI Decompilation task created for function at 0x{function.start:x}")
@@ -106,7 +106,7 @@ class AIDecompiler:
 
                 if poll_status.lower() == "uninitialised":
                     try:
-                        with revengai.ApiClient(self.config.api_config) as api_client:
+                        with self.config.create_api_client() as api_client:
                             api_instance = revengai.FunctionsAIDecompilationApi(api_client)
                             api_response_status = api_instance.create_ai_decompilation_task(function_id)
                             log_info(f"RevEng.AI | AI Decompilation task created for function at 0x{function.start:x}")
@@ -126,7 +126,7 @@ class AIDecompiler:
 
             if poll_status.lower() == "completed":
                 log_info(f"RevEng.AI | AI Decompilation for function at 0x{function.start:x} is completed")
-                with revengai.ApiClient(self.config.api_config) as api_client:
+                with self.config.create_api_client() as api_client:
                     api_instance = revengai.FunctionsAIDecompilationApi(api_client)
                     api_response_status = api_instance.get_ai_decompilation_task_result(function_id, summarise=True, generate_inline_comments=True)
 

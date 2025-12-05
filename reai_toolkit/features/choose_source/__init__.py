@@ -7,19 +7,19 @@ class ChooseSourceFeature(BaseAuthFeature):
     def __init__(self, config=None):
         super().__init__(config)
         self.choose_source = ChooseSource(config)
-        log_info("RevEng.AI | Choose Source Feature initialized")
+        log_info("RevEng.AI | Attach to existing Feature initialized")
 
     def register(self):
         PluginCommand.register(
-            "RevEng.AI\\Analysis\​​Choose Source",
+            "RevEng.AI\\Analysis\​​Attach to existing",
             "Choose a source for the binary analysis",
             self.show_choose_source_dialog,
             self.is_valid
         )
-        log_info("RevEng.AI | Choose Source Feature registered")
+        log_info("RevEng.AI | Attach to existing Feature registered")
 
     def show_choose_source_dialog(self, bv: BinaryView):
-        log_info("RevEng.AI | Opening Choose Source dialog")
+        log_info("RevEng.AI | Opening Attach to existing dialog")
         dialog = ChooseSourceDialog(self.config, self.choose_source, bv)
         dialog.exec_()
 

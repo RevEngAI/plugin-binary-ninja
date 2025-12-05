@@ -11,7 +11,7 @@ class BinaryUploader:
  
     def get_models(self, bv: BinaryView):
         try:
-            with revengai.ApiClient(self.config.api_config) as api_client:
+            with self.config.create_api_client() as api_client:
                 api_instance = revengai.ModelsApi(api_client)
                 api_response = api_instance.get_models()
                 models = api_response.data.models
@@ -24,7 +24,7 @@ class BinaryUploader:
     def upload_file(self, file_path: str, file_type: revengai.UploadFileType):
         try:
             file = Path(file_path).read_bytes()
-            with revengai.ApiClient(self.config.api_config) as api_client:
+            with self.config.create_api_client() as api_client:
                 api_instance = revengai.AnalysesCoreApi(api_client)
                 api_response = api_instance.upload_file(file_type, file, force_overwrite=True)
                 log_info(f"RevEng.AI | File uploaded successfully.")
@@ -71,7 +71,7 @@ class BinaryUploader:
                 })
             log_info(f"RevEng.AI | Collected {len(symbols['function_boundaries'])} functions from Binary Ninja!")
 
-            with revengai.ApiClient(configuration=self.config.api_config) as api_client:
+            with self.config.create_api_client() as api_client:
 
                 analyses_client = revengai.AnalysesCoreApi(api_client)
 
@@ -95,7 +95,7 @@ class BinaryUploader:
 
                 log_info(f"RevEng.AI | Analysis started successfully. Analysis ID: {analysis_result.data.analysis_id}, Binary ID: {analysis_result.data.binary_id}")
 
-            PeriodicChecker(self.config).start_checking(bv, analysis_result.data.analysis_id, analysis_result.data.binary_id, self.config.set_current_info, self.config.api_config)
+            PeriodicChecker(self.config).start_checking(bv, analysis_result.data.analysis_id, analysis_result.data.binary_id, self.config.set_current_info)
 
             return True, "Analysis started successfully."
             

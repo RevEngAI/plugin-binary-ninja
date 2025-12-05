@@ -73,7 +73,7 @@ class AIDecompilerChecker(QObject):
                 return
             self.flag = True
 
-            with revengai.ApiClient(self._current_config.api_config) as api_client:
+            with self._current_config.create_api_client() as api_client:
                 api_instance = revengai.FunctionsAIDecompilationApi(api_client)
                 api_response_status = api_instance.get_ai_decompilation_task_status(function_id)
                 log_info(f"RevEng.AI | AI Decompilation task created for Function ID: {function_id}")
@@ -87,7 +87,7 @@ class AIDecompilerChecker(QObject):
             if poll_status.lower() == "uninitialised":
                 log_info(f"RevEng.AI | Starting AI Decompilation for Function ID: {function_id}")
                 try:
-                    with revengai.ApiClient(self._current_config.api_config) as api_client:
+                    with self._current_config.create_api_client() as api_client:
                         api_instance = revengai.FunctionsAIDecompilationApi(api_client)
                         api_response = api_instance.create_ai_decompilation_task(function_id)
                         if not api_response.status:
@@ -108,7 +108,7 @@ class AIDecompilerChecker(QObject):
             
             self.flag = False
             log_info(f"RevEng.AI | AI Decompilation for Function ID: {function_id} is completed")
-            with revengai.ApiClient(self._current_config.api_config) as api_client:
+            with self._current_config.create_api_client() as api_client:
                 api_instance = revengai.FunctionsAIDecompilationApi(api_client)
                 api_response = api_instance.get_ai_decompilation_task_result(function_id, summarise=True, generate_inline_comments=True)
             

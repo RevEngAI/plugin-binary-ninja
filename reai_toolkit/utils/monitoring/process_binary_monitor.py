@@ -4,7 +4,6 @@ from typing import Optional
 import revengai
 from binaryninja import log_info, log_error, BinaryView
 from requests.exceptions import RequestException
-from PySide6.QtWidgets import QMessageBox
 from PySide6.QtCore import QObject, Signal
 from reai_toolkit.utils.core.sync import AnalysisSyncService
 
@@ -17,6 +16,7 @@ class PeriodicChecker(QObject):
         self._current_timer: Optional[Timer] = None
         self.number_of_clicks = 0
         self.update_text_signal.connect(self._update_text_slot)
+        self.config = config
         self.sync_service = AnalysisSyncService(config)
 
     def _update_text_slot(self, callback, text):
@@ -35,10 +35,10 @@ class PeriodicChecker(QObject):
             log_info("RevEng.AI | Stopped periodic status check")
         
 
-    def start_checking(self, binary_view: BinaryView, analysis_id: int, binary_id: int, callback, api_config, interval: float = 60) -> None:
+    def start_checking(self, binary_view: BinaryView, analysis_id: int, binary_id: int, callback, interval: float = 60) -> None:
         def _worker(bv: BinaryView, bid: int, aid: int):
             try:
-                with revengai.ApiClient(api_config) as api_client:
+                with self.config.create_api_client() as api_client:
                     api_instance = revengai.AnalysesCoreApi(api_client)
                     api_response = api_instance.get_analysis_status(aid)   
                     status = api_response.data.analysis_status
@@ -57,8 +57,8 @@ class PeriodicChecker(QObject):
                         )
                 else:
 
-                    # Anaysis is complete, fetch model_id and invoke callback
-                    with revengai.ApiClient(api_config) as api_client:
+                    # Analysis is complete, fetch model_id and invoke callback
+                    with self.config.create_api_client() as api_client:
                         api_instance = revengai.AnalysesCoreApi(api_client)
                         analysis_details: revengai.BaseResponseBasic = api_instance.get_analysis_basic_info(
                             analysis_id=analysis_id

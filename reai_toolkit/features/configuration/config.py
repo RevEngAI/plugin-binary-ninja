@@ -15,6 +15,8 @@ class Config:
         self.sha256 = ""
         self.api_config = None
         self.is_configured = False
+        self.user_agent = "Binary Ninja/RevEng.AI_Plugin"
+        self.reveng_header = "X-RevEng-Application"
         self._load_config()
   
 
@@ -46,7 +48,6 @@ class Config:
         self.api_key = settings.get_string("revengai.api_key", None)
         self.portal_url = settings.get_string("revengai.portal_url", None)
         self.init_api_config()
-        #re_conf["user_agent"] = "RevEng.AI BinaryNinja Plugin"
         
 
     def save_config(self) -> bool:
@@ -75,8 +76,24 @@ class Config:
             self.api_config = revengai.Configuration(api_key={'APIKey': self.api_key}, host=self.host)
         except Exception as e:
             log_error(f"RevEng.AI | Failed to initialize API client: {str(e)}")
-        
-        
+
+    def create_api_client(self):
+        """
+        Create a properly configured RevEng.AI API client with custom headers and user agent.
+
+        Returns:
+            revengai.ApiClient: Configured API client instance
+
+        Usage:
+            with self.config.create_api_client() as api_client:
+                api_instance = revengai.SomeApi(api_client)
+                # ... use api_instance
+        """
+        api_client = revengai.ApiClient(self.api_config, self.reveng_header, self.user_agent)
+        api_client.user_agent = self.user_agent
+        return api_client
+
+
     def clear_config(self):
         self.api_key = ""
         self.host = ""
@@ -88,7 +105,7 @@ class Config:
     def check_auth(self):
         try:
             self.init_api_config()
-            with revengai.ApiClient(self.api_config) as api_client:
+            with self.create_api_client() as api_client:
                 api_instance = revengai.AuthenticationUsersApi(api_client)
                 api_response = api_instance.get_requester_user_info()
                 log_info(f"RevEng.AI | Welcome {api_response.data.username}!")
@@ -149,7 +166,7 @@ class Config:
                 AnalysisSyncService(self).sync_analysis_data(analysis_id=self.analysis_id, bv=bv)
             else:
                 log_info(f"RevEng.AI | Binary not found in saved configurations, searching in RevEng.AI...")
-                with revengai.ApiClient(self.api_config) as api_client:
+                with self.create_api_client() as api_client:
                     api_instance = revengai.SearchApi(api_client)
                     api_response = api_instance.search_binaries(partial_sha256 = self.sha256, user_files_only = True)
                 if not len(api_response.data.results):

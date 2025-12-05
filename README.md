@@ -15,6 +15,18 @@ and use it for Binary Code Similarity to help you Reverse Engineer stripped bina
 ## Table of contents
 
 - [Key Features](#key-features)
+- [Installation](#installation)
+  - [Setup](#setup)
+  - [Verifying the Installation](#verifying-the-installation)
+- [Usage](#usage)
+    - [Configuration](#configuration)
+    - [Analysis](#analysis)
+    - [Auto Unstrip](#auto-unstrip)
+    - [Function Matching](#function-matching)
+    - [AI Decompilation](#ai-decompilation)
+- [Contributing](#contributing)
+  - [Reporting Bugs](#reporting-bugs)
+- [Known Issues](#known-issues)
 
 ### Key features
 
@@ -26,12 +38,21 @@ This plugin brings the power of RevEng.AI directly into Binary Ninja. Here are t
 - **Auto-Unstrip**: Automatically restore stripped symbols in your binary using our AI engine.
 - **Match Functions**: Compare and match functions from your current binary with those in your existing collections.
 - **Match Unique Function**: Compare and match a single function from your current binary with those in your existing collections.
-- **View Function in Portal**: Convenient shortcut to explore the function within the platform interface.
+- **View Function in Portal**: Convenient shortcuts to explore the function within the platform interface.
 
 
 ## Installation
 
-### Step 1: Locate Binary Ninja Plugins Folder
+The builds for latest stable version of the RevEng.AI Binary Ninja plugin can be downloaded from the [Releases](https://github.com/revengai/plugin-binary-ninja/releases/latest) page.
+
+### Supported Binary Ninja versions
+
+We support Binary Ninja 3.0+ on Windows, macOS and Linux with Python version `3.10`.
+
+### Setup
+
+1. **Download** the plugin code for your platform from the [Releases](https://github.com/revengai/plugin-binary-ninja/releases/latest) page.
+2. **Extract** the archive contents into your Binary Ninja plugins directory.
 
 Locate your Binary Ninja user plugin directory:
 
@@ -45,21 +66,101 @@ Expected output locations:
  - macOS: `~/Library/Application Support/Binary Ninja/plugins/`
 
 
-### Step 2: Download & Install the Plugin
-
-1. Visit the releases page: https://github.com/RevEngAI/reai-ida/releases
-2. Download the latest release (look for the most recent version).
-3. Extract the contents into the opened plugin folder.
-4. Ensure the folder structure looks like this:
-
+After extraction, the directory structure should look like this:
 ```
-Example in Linux...
+Example for Linux...
 ~/.binaryninja/plugins/
    └── reai_toolkit/
       └── [plugin files...]
 ```
 
-### For Mac Users
+3. **Restart** Binary Ninja if it was running.
+
+### Verifying the Installation
+Once Binary Ninja is open, confirm that the RevEng.AI menu appears in the plugins menu bar.
+If no errors are displayed in the console and the menu loads, your installation is complete.
+
+[![Plugin Menu](images/installed.png)]()
+
+## Usage
+
+In this section, we provide an example workflow for our plugin.
+
+### Configuration
+
+The first thing we need to do is configure the plugin with our API key and the host to use.
+
+When you load the plugin for the first time, or by selecting `RevEng.AI -> Configure`, you will be guided through the configuration process.
+
+[![Plugin Menu](images/configure.png)]()
+
+Enter your API Key from the [RevEng.AI Portal](https://portal.reveng.ai/settings) into the API Key field
+where it will be validated and saved for future use.
+
+### Analysis
+
+Once configured, you can upload the current binary for analysis by selecting `RevEng.AI -> Analysis -> Create New`.
+It's usually enough to keep the default options, but you can adjust the analysis settings as needed.
+
+![Analysis Window](images/create-new.png)
+
+If you have already processed your binary on the platform or if there are publicly available analyses, you can select 
+one as your working source without needing to upload again.
+
+- Select `RevEng.AI -> Analysis -> Attach to existing`
+
+![Atach to existing](images/attach-to-existing.png)
+
+This is required before using features like function matching or auto unstrip.
+
+### Auto Unstrip
+
+The `Auto Unstrip` tool allows you to automatically recover function names based on our debug symbol database. It is
+an automated process that will recover all function names from the currently attached binary.
+
+You can access it by selecting `RevEng.AI -> Auto Unstrip` from the menu.
+
+### Function Matching
+
+The function matching tool allows you to rename functions in a binary based on similarity to functions in our database.
+It is a manual process that can be done on a per-function basis, or in batch mode for the entire binary. It allows you
+to have more control over which functions are renamed, and when as well as the ability to review the suggested names before
+applying them.
+
+To match with all functions in the binary, select `RevEng.AI -> Function Matching`.
+![Function Matching Window](images/function-matching-full.png)
+
+Or to match a single function, select the function and then navigate to `RevEng.AI -> Functions -> Match Function`.
+
+Adjust the filters as necessary and when ready click `Match Functions`.
+For multiple functions at most 1 result will be returned. For individual functions, up to 10 functions will be returned.
+You can then decide to rename a function to one of the suggested names by clicking `Rename Matched Functions`.
+
+### AI Decompilation
+
+The `AI Decompilation` tool allows you to get AI generated decompilation of selected functions. You can access it by
+selecting a function in Binary Ninja's listing or decompiler view and selecting `RevEng.AI -> Functions -> AI Decompilation`.
+
+![AI Decomp](images/ai-decompilation.png)
+
+The window will show you the AI generated decompilation of the selected function as well as a
+natural language explanation of what the function does.
+
+The window can be pinned and will update as you select different functions.
+
+## Contributing
+
+We welcome pull requests from the community.
+
+The plugin is still undergoing active development currently, and we are looking for feedback on how to improve it.
+
+### Reporting Bugs
+
+If you've found a bug in the plugin, please open an issue via [GitHub](https://github.com/RevEngAi/plugin-binary-ninja/issues/new/choose), or create a post on our [Discord](https://discord.com/invite/ZwQTvzfSbA).
+
+## Known Issues
+
+- On macOS, you might need to remove the quarantine attribute from the plugin folder to allow Binary Ninja to load it properly.
 
 After installation, run the following command:
 
@@ -70,118 +171,3 @@ xattr -dr com.apple.quarantine "$HOME/Library/Application Support/Binary Ninja/p
 It removes the macOS “quarantine” flag (added to files downloaded from the internet), so the system won’t block or warn when loading the plugin.
 
 ---
-
-## Using the Plugin ⚙️
-
-Once installed, you’ll find `RevEng.AI` listed in the Binary Ninja plugins toolbar menu.
-
-<img src="images/plugintoolbar.png" >
-
-Make sure to restart Binary Ninja completely after installation.
-Then, check the Plugins menu — the RevEng.AI plugin should be visible.
-Finally, load a binary and explore the features described below.
-
-### 1. Configure the Plugin
-
-Select `Configuration` from the menu to set up your API key and host.
-
-<img src="./images/config.png" >
-
-Clicking "Continue" will validate your API key.
-
----
-
-### 2. Process a Binary
-
-Upload the currently loaded binary to RevEng.AI:
-
-- Select `RevEng.AI > Process Binary`
-
-<img src="./images/processbinary.png" >
-
-Before starting the process, you can add a PDB file and debug information, assign custom tags for better tracking, choose which AI model you want to use, and decide whether to keep the analysis private (default) or make it publicly available.
-The plugin will handle the upload and initiate the analysis. Once completed, an internal analysis ID is assigned.
-
----
-
-### 3. Choose Source Analysis
-
-If you have already processed your binary on the platform or if there are publicly available analyses, you can select one as your working source.
-
-- Select `RevEng.AI > Choose Source`
-
-<img src="./images/choosesource.png" >
-
-This is required before using some features like function matching or auto unstrip.
-
----
-
-### 4. Auto Unstrip
-
-Bring back symbol names automatically:
-
-- Select `RevEng.AI > Auto Unstrip`
-
-<img src="./images/autounstrip.png" >
-
-Functions will be renamed with the most likely matching names from your configured collections.
-
----
-
-### 5. Match Functions
-
-Use function matching to identify similar functions in other binaries or collections:
-
-- Click `RevEng.AI > Match Functions`
-
-<img src="./images/matchedfunctions.png" >
-
-Matched functions are displayed based on the given confidence value. You can navigate or rename based on the results.
-
----
-
-### 6. Match Current Function
-
-Use function matching to identify similar functions in other binaries or collections:
-
-- Click `RevEng.AI > Match Current Functions`
-
-<img src="./images/currentfunction.png" >
-
-Matched functions are displayed based on the given similarity value. You can navigate or rename based on the results.
-
----
-
-### 7. View Current Function in Portal
-
-Quick and easy way to open the current function in the RevEng.AI Portal.
-
-- Click `RevEng.AI > View Function in Portal`
-
-<img src="./images/output.gif" >
-
----
-
-
-## Troubleshooting
-
-- Only Binary Ninja 3.0+ is supported
-- Python 3.9 or later is required
-- Ensure your API key is valid and your analysis contains function-level information
-
-## Software Requirements
-
-This plugin relies on:
-
-- [reait](https://github.com/RevEngAI/reait)
-- requests
-- PySide6
-- libbs
-
-## License
-
-This plugin is released under the GPL-2.0 license. 
-
-## Disclaimer
-
-Binary Ninja is a trademark of Vector 35. This project isn't affiliated with or endorsed by Vector 35.

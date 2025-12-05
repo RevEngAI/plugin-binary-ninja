@@ -9,7 +9,7 @@ class DetachAnalysisFeature(BaseAuthFeature):
 
     def register(self):
         PluginCommand.register(
-            "RevEng.AI\\Analysis\\\u200b\u200b\u200bDetach Analysis",
+            "RevEng.AI\\Analysis\\\u200b\u200bDetach",
             "Detach from the current RevEng.AI analysis",
             self.verify_detach,
             self.is_valid
@@ -21,7 +21,7 @@ class DetachAnalysisFeature(BaseAuthFeature):
         
         reply = QMessageBox.question(
             None,
-            "RevEng.AI - Detach Analysis",
+            "RevEng.AI - Detach",
             "Are you sure you want to detach from the current RevEng.AI analysis?\n\n"
             "This will disconnect this binary from its analysis on the RevEng.AI platform. "
             "You can reconnect later by choosing a source again.",

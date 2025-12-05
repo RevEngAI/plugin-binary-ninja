@@ -46,7 +46,7 @@ class MatchFunctionsDialog(QDialog):
     
 
     def init_ui(self):
-        self.setWindowTitle("RevEng.AI: Match Functions")
+        self.setWindowTitle("RevEng.AI: Function matching")
         self.setMinimumSize(1000, 700)
         self.resize(1400, 950)
         self.selected_collections = []
@@ -69,7 +69,7 @@ class MatchFunctionsDialog(QDialog):
         info_layout = QVBoxLayout()
         title_label = QLabel("Function Matching")
         title_label.setStyleSheet("font-size: 18px; font-weight: bold;")
-        description_label = QLabel("Select functions and run ANN; Review results per function.")
+        description_label = QLabel("Match functions in this binary against previously seen samples")
         description_label.setWordWrap(True)
         info_layout.addWidget(title_label)
         info_layout.addWidget(description_label)
@@ -266,7 +266,7 @@ class MatchFunctionsDialog(QDialog):
     def start_matching(self):
         log_info("RevEng.AI | Starting function matching process")
         
-        self.progress = create_cancellable_progress_dialog(self, "RevEng.AI Match Functions", "Matching functions...", self.match_functions.cancel)
+        self.progress = create_cancellable_progress_dialog(self, "RevEng.AI: Function matching", "Matching functions...", self.match_functions.cancel)
         self.progress.show()
         QCoreApplication.processEvents() 
 
@@ -293,17 +293,16 @@ class MatchFunctionsDialog(QDialog):
             skipped_count = data["skipped"]
             failed_count = data["failed"]
             total_count = successful_count + skipped_count + failed_count
-            
-            #QMessageBox.information(self, "RevEng.AI Match Functions", f"Function matching completed successfully!\nSuccessful matches: {successful_count}\nNot enough confidence: {failed_count}\nSkipped: {skipped_count}\nTotal functions analyzed: {total_count}", QMessageBox.Ok)
+
             if successful_count > 0 and self.edit_datatypes.isChecked():
                 self.start_fetching_data_types()
             else:
-                QMessageBox.information(self, "RevEng.AI Match Functions", f"Function matching completed successfully!\nSuccessful matches: {successful_count}\nNot enough confidence: {failed_count}\nSkipped: {skipped_count}\nTotal functions analyzed: {total_count}", QMessageBox.Ok)
+                QMessageBox.information(self, "RevEng.AI: Function matching", f"Function matching completed successfully!\nSuccessful matches: {successful_count}\nNot enough confidence: {failed_count}\nSkipped: {skipped_count}\nTotal functions analyzed: {total_count}", QMessageBox.Ok)
 
         else:
             self.populate_results_table([])
             log_error(f"RevEng.AI | Function matching failed: {data}")
-            QMessageBox.critical(self, "RevEng.AI Match Functions Error", f"Failed to match functions:\n{data}", QMessageBox.Ok)
+            QMessageBox.critical(self, "RevEng.AI: Function matching", f"Failed to match functions:\n{data}", QMessageBox.Ok)
     
     
     def populate_results_table(self, results):

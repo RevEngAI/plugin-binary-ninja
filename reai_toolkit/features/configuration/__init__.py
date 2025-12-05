@@ -43,7 +43,7 @@ class ConfigurationFeature():
                     None,
                     "RevEng.AI - Binary Not Found",
                     "This binary has not been processed in the RevEng.AI platform yet.\n\n"
-                    "Please upload and process the binary first using the 'RevEng.AI > Process Binary' option "
+                    "Please upload and process the binary first using the 'RevEng.AI > Create new' option "
                     "before using other RevEng.AI features.",
                     QMessageBox.Ok
                 )

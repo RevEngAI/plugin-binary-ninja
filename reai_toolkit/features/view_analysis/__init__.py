@@ -8,7 +8,7 @@ class ViewAnalysisFeature(BaseAuthFeature):
 
     def register(self):
         PluginCommand.register(
-            "RevEng.AI\\Analysis\\\u200b\u200bView Analysis",
+            "RevEng.AI\\Analysis\\\u200b\u200bView in portal",
             "View the current analysis in the RevEng.AI portal",
             self.open_analysis,
             self.is_valid

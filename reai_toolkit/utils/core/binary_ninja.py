@@ -8,7 +8,7 @@ from os import access, R_OK
 
 def _rename_in_portal(config: revengai.Configuration, function_id:int, new_name:str, new_mangled_name:str):
     try:
-        with revengai.ApiClient(config.api_config) as api_client:
+        with config.create_api_client() as api_client:
             api_instance = revengai.FunctionsRenamingHistoryApi(api_client)
             api_instance.rename_function_id(
                 function_id=function_id,
@@ -71,7 +71,7 @@ def get_function_by_addr(bv: BinaryView, addr: int) -> Function:
     return functions_containing[0]
 
 def get_function_id_by_addr(bv: BinaryView, addr: int, config):
-    with revengai.ApiClient(config.api_config) as api_client:
+    with config.create_api_client() as api_client:
         api_instance = revengai.AnalysesResultsMetadataApi(api_client)
         analysis_id = config.get_analysis_id(bv)
         api_response = api_instance.get_functions_list(analysis_id)

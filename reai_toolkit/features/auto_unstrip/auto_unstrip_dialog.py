@@ -145,7 +145,7 @@ class AutoUnstripDialog(QDialog):
             select_item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsSelectable)
             select_item.setCheckState(Qt.Checked)
             self.results_table.setItem(i, 0, select_item)
-            
+
             columns = [
                 (1, "virtual_address", lambda x: f"0x{x:x}" if isinstance(x, int) else str(x)),
                 (2, "current_name", lambda x: str(x)),

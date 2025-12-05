@@ -54,12 +54,12 @@ class MatchCurrentFunction(MatchFeature):
 
             analysis_id = self.config.get_analysis_id(bv)
             if not analysis_id:
-                raise Exception("Analysis not found. Please choose one using 'Choose Source' feature.")
+                raise Exception("Analysis not found. Please choose one using the 'Attach to existing' feature.")
             
             if self.cancelled.is_set():
                 return False, "Operation cancelled"
             
-            with revengai.ApiClient(self.config.api_config) as api_client:
+            with self.config.create_api_client() as api_client:
                 analysis_core_instance = revengai.AnalysesResultsMetadataApi(api_client)
                 analyzed_functions = analysis_core_instance.get_functions_list(analysis_id)
                 analyzed_functions = analyzed_functions.to_dict()["data"]["functions"]
@@ -103,7 +103,7 @@ class MatchCurrentFunction(MatchFeature):
             matched_count = 0
             while True:
                 time.sleep(3)
-                with revengai.ApiClient(self.config.api_config) as api_client:
+                with self.config.create_api_client() as api_client:
                     analysis_core_instance = revengai.FunctionsCoreApi(api_client)
                     functions_by_distance = analysis_core_instance.batch_function_matching( schema_ann_model)
 
