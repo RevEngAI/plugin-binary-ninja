@@ -15,7 +15,7 @@ class ViewAnalysisFeature(BaseAuthFeature):
         )
 
     def open_analysis(self, bv: BinaryView):
-        url = f"{self.config.portal_url}/analyses/{self.config.binary_id}"
+        url = f"{self.config.portal_url}/analyses/{self.config.analysis_id}"
         
         if url:
             log_info(f"RevEng.AI | Opening analysis in browser: {url}")
