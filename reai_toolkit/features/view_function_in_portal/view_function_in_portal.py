@@ -37,7 +37,8 @@ class ViewFunctionInPortal:
                 log_error(f"RevEng.AI | Function {function.name} not found in analyzed functions")
                 raise Exception("Function not found in analyzed functions")
             
-            url = f"{self.config.portal_url}/function/{analyzed_function.function_id}"
+
+            url = f"{self.config.portal_url}/analyses/{analysis_id}?fn={analyzed_function.function_id}"
             log_info(f"RevEng.AI | Opening URL: {url}")
             InteractionHandler().open_url(url)
 
