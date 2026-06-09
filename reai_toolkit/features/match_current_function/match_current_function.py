@@ -127,8 +127,7 @@ class MatchCurrentFunction(MatchFeature):
                                 "nearest_neighbor_id": function_by_distance.matched_functions[0].function_id,
                             }
 
-                            func_addr = function_by_distance.matched_functions[0].function_vaddr
-                            log_info(f"RevEng.AI | Function address: {func_addr:x}")
+                            func_addr = id_to_addr.get(function_by_distance.function_id)
                             log_info(f"RevEng.AI | Function ID: {function_by_distance.function_id}")
                             if not func_addr:
                                 line["error"] = "Function not found in binary"
@@ -136,9 +135,16 @@ class MatchCurrentFunction(MatchFeature):
                                     result["data"].append(line)
                                 continue
                             
-                            function = bv.get_function_at(func_addr)
-                            line["function_address"] = func_addr 
-                            log_info(f"RevEng.AI | Function: {function} at {func_addr:x}")
+                            source_function = bv.get_function_at(func_addr)
+                            if not source_function:
+                                source_function = bv.get_function_at(func_addr + bv.image_base)
+                            if not source_function:
+                                line["error"] = "Function not found in binary"
+                                if line not in result["data"]:
+                                    result["data"].append(line)
+                                continue
+                            line["function_address"] = source_function.start
+                            log_info(f"RevEng.AI | Function: {source_function.name} at {source_function.start:x}")
 
                             if not line["matched_function_name"] or line["matched_function_name"].startswith(("sub_", "FUN_")):
                                     line["error"] = "Function name is also debug symbol"

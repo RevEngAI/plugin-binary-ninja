@@ -172,6 +172,7 @@ version = "0.0.1"
 source = { virtual = "." }
 dependencies = [
     { name = "libbs" },
+    { name = "pycparser" },
     { name = "pydantic" },
     { name = "revengai" },
     { name = "urllib3" },
@@ -185,6 +186,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "libbs", specifier = "==2.15.1" },
+    { name = "pycparser", specifier = ">=2.22,<3" },
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "revengai", specifier = ">=3.88.0" },
     { name = "urllib3", specifier = ">=2.0.0,<2.3.0" },
