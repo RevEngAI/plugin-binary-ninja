@@ -73,7 +73,9 @@ class Config:
     
     def init_api_config(self):
         try:
-            self.api_config = revengai.Configuration(api_key={'APIKey': self.api_key}, host=self.host)
+            host = (self.host or "").strip().rstrip("/")
+            api_key = (self.api_key or "").strip()
+            self.api_config = revengai.Configuration(api_key={'APIKey': api_key}, host=host)
         except Exception as e:
             log_error(f"RevEng.AI | Failed to initialize API client: {str(e)}")
 
@@ -106,11 +108,11 @@ class Config:
         try:
             self.init_api_config()
             with self.create_api_client() as api_client:
-                api_instance = revengai.AuthenticationUsersApi(api_client)
-                api_response = api_instance.get_requester_user_info()
-                log_info(f"RevEng.AI | Welcome {api_response.data.username}!")
+                api_instance = revengai.ConfigApi(api_client)
+                api_instance.get_config()
+                log_info("RevEng.AI | User authenticated successfully.")
             return True
-        except Exception as e: 
+        except Exception as e:
             log_error(f"RevEng.AI | Failed to check authentication: {str(e)}")
             return False
         
@@ -187,7 +189,7 @@ class Config:
 
     def retrieve_api_key(self):
         try:
-            url = f"{str(self.portal_url)}/settings"
+            url = f"{str(self.portal_url)}/settings?tab=API+Key"
             log_info(f"RevEng.AI | Opening URL: {url}")
             InteractionHandler().open_url(url)
             return True, ""
