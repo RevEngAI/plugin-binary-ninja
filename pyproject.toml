@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "plugin-binary-ninja"
 version = "0.0.1"
@@ -8,6 +12,9 @@ dependencies = [
     "libbs==2.15.1",
     "pydantic>=2.12.5",
 ]
+
+[tool.setuptools.packages.find]
+include = ["reai_toolkit*"]
 
 [tool.uv]
 package = false
