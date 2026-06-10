@@ -25,6 +25,7 @@ venv/
 ENV/
 env/
 .env/
+.venv/
 
 # IDE
 .idea/
@@ -51,4 +52,6 @@ patchers/
 ehthumbs.db
 Thumbs.db
 
+reai_toolkit/vendor/
 reai_toolkit/vendor/*
+plugin_binary_ninja.egg-info/*

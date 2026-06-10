@@ -59,7 +59,7 @@ if os.path.exists(vendor_path):
 
         os.environ["SSL_CERT_FILE"] = certifi.where()
         os.environ["REQUESTS_CA_BUNDLE"] = certifi.where()
-        
+
     except Exception as e:
         log_error(f"RevEng.AI | Error listing vendor contents: {e}")
 else:
