@@ -1,6 +1,5 @@
 from typing import Dict, Optional, Callable
 from binaryninja import BinaryView, log_info, log_error
-import revengai
 from reai_toolkit.utils import get_function_id_by_addr as get_function_id_by_addr_util, AddressChangeMonitor, AIDecompilerChecker
 
 class AIDecompiler:
@@ -75,68 +74,27 @@ class AIDecompiler:
                 self.dialog.pre_tab_setup(bv, addr)
 
     def start_ai_decompiler(self, bv: BinaryView, options: Dict) -> None:
+        editor = options.get("editor")
+        tab_name = options.get("tab_name")
+        function = options.get("function")
+        callback = options.get("callback")
         try:
             if not self.tracking_enabled:
                 self.start_address_tracking(self.address_change_callback)
                 self.tracking_enabled = True
-            
-            log_info("RevEng.AI | Starting function searching in portal")
-            editor = options.get("editor")
-            tab_name = options.get("tab_name")
-            function = options.get("function")
-            callback = options.get("callback")
+
             analysis_id = self.config.get_analysis_id(bv)
             if not analysis_id:
                 raise Exception("Analysis not found. Please choose one using the 'Attach to existing' feature.")
             function_id = get_function_id_by_addr_util(bv, function.start, self.config)
 
-            with self.config.create_api_client() as api_client:
-                api_instance = revengai.FunctionsAIDecompilationApi(api_client)
-                api_response_status = api_instance.get_ai_decompilation_task_status(function_id)
-                log_info(f"RevEng.AI | AI Decompilation task created for function at 0x{function.start:x}")
-
-            poll_status = api_response_status.data.status
-            if not poll_status:
-                raise Exception("AI Decompilation task not found.")
-            
-            log_info(f"RevEng.AI | Polling AI decompilation: {poll_status}")
-
-            if poll_status.lower() != "completed" and poll_status.lower() != "failed":
-                log_info(f"RevEng.AI | Starting AI Decompilation for function at 0x{function.start:x}")
-
-                if poll_status.lower() == "uninitialised":
-                    try:
-                        with self.config.create_api_client() as api_client:
-                            api_instance = revengai.FunctionsAIDecompilationApi(api_client)
-                            api_response_status = api_instance.create_ai_decompilation_task(function_id)
-                            log_info(f"RevEng.AI | AI Decompilation task created for function at 0x{function.start:x}")
-                            if not api_response_status.status:
-                                callback(editor, "AI Decompilation failed.")
-                                return
-
-                    except Exception as e:
-                        log_error(f"RevEng.AI | Error beginning AI decompilation: {str(e)}")
-                        callback(editor, "AI Decompilation failed.")
-                        return
-
-                log_info("RevEng.AI | AI Decompilation started")
-                periodic_checker = AIDecompilerChecker()
-                periodic_checker.start_ai_decompiler_checking(function_id, callback, editor, tab_name, self.config)
-                self._current_checker = periodic_checker
-
-            if poll_status.lower() == "completed":
-                log_info(f"RevEng.AI | AI Decompilation for function at 0x{function.start:x} is completed")
-                with self.config.create_api_client() as api_client:
-                    api_instance = revengai.FunctionsAIDecompilationApi(api_client)
-                    api_response_status = api_instance.get_ai_decompilation_task_result(function_id, summarise=True, generate_inline_comments=True)
-
-                callback(editor, api_response_status.data.decompilation)
-
-            if poll_status.lower() == "failed":
-                log_info(f"RevEng.AI | AI Decompilation for function at 0x{function.start:x} failed")
-                callback(editor, "AI Decompilation failed.")
+            log_info(f"RevEng.AI | Starting AI decompilation for function at 0x{function.start:x}")
+            periodic_checker = AIDecompilerChecker()
+            periodic_checker.start_ai_decompiler_checking(function_id, callback, editor, tab_name, self.config)
+            self._current_checker = periodic_checker
 
         except Exception as e:
             log_error(f"RevEng.AI | Error in AI decompiler: {str(e)}")
-            callback(editor, "AI Decompilation failed.")
+            if callback and editor:
+                callback(editor, f"AI Decompilation failed: {e}")
             return False, str(e)
