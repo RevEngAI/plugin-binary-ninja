@@ -16,7 +16,7 @@ jobs:
         id: generate-token
         uses: actions/create-github-app-token@v1
         with:
-          app-id: ${{ vars.REVENG_APP_ID }}
+          app-id: ${{ secrets.REVENG_APP_ID }}
           private-key: ${{ secrets.REVENG_APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
           repositories: |
