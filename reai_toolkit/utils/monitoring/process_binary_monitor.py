@@ -66,7 +66,7 @@ class PeriodicChecker(QObject):
                         model_id = analysis_details.data.model_id
                         callback(bid, aid, model_id)
 
-                        self.sync_service.sync_analysis_data(analysis_id=aid, bv=bv)
+                        bv = self.sync_service.sync_analysis_data(analysis_id=aid, bv=bv)
 
                         log_info(f"RevEng.AI | Analysis completed with status: {status} for Binary ID: {bid} | Analysis ID: {aid} | Model ID: {model_id}")
             except RequestException as ex:

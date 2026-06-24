@@ -14,12 +14,15 @@ class AnalysisSyncService:
     def _get_current_base_address(self, bv) -> int:
         return bv.start
 
-    def _rebase_program(self, bv, base_address_delta: int) -> None:
-        bv.rebase(bv.start + base_address_delta)
+    def _rebase_program(self, bv: BinaryView, base_address_delta: int) -> BinaryView:
+        rebased = bv.rebase(bv.start + base_address_delta)
+        return rebased if rebased is not None else bv
 
-    def _fetch_basic_and_rebase(self, bv: BinaryView, analysis_id: int) -> BaseResponseBasic:
+    def _fetch_basic_and_rebase(self, bv: BinaryView, analysis_id: int) -> BinaryView:
         """
-        Fetches basic analysis information and rebases the program if necessary.
+        Rebases the view to the analysis base address when they differ and
+        returns the view to keep working with (a new BinaryView when a rebase
+        happened, otherwise the original).
         """
         with ApiClient(self.sdk_config) as api_client:
             analyses_client = AnalysesCoreApi(api_client)
@@ -27,14 +30,16 @@ class AnalysisSyncService:
                 analysis_id=analysis_id
             )
 
-            local_base_address: int = self._get_current_base_address(bv)
+        if not (analysis_details.data and analysis_details.data.base_address is not None):
+            return bv
 
-            if analysis_details.data and analysis_details.data.base_address is not None:
-                remote_base_address: int = analysis_details.data.base_address
+        remote_base_address: int = analysis_details.data.base_address
+        local_base_address: int = self._get_current_base_address(bv)
 
-            if local_base_address != remote_base_address:
-                    base_address_delta: int = remote_base_address - local_base_address
-                    self._rebase_program(bv, base_address_delta)
+        if local_base_address == remote_base_address:
+            return bv
+
+        return self._rebase_program(bv, remote_base_address - local_base_address)
 
     def _fetch_function_map(self, analysis_id: int) -> FunctionMapping:
         """
@@ -110,14 +115,15 @@ class AnalysisSyncService:
 
     def sync_analysis_data(
         self, analysis_id: int, bv: BinaryView
-    ) -> None:
+    ) -> BinaryView:
         """
-        Syncs the analysis data until completion or failure.
+        Rebases the view to the analysis base address (when needed) and applies
+        the analysis function names. Returns the synced view.
         """
-        response = self._fetch_function_map(analysis_id=analysis_id)
+        bv = self._fetch_basic_and_rebase(bv=bv, analysis_id=analysis_id)
 
-        function_mapping: FunctionMapping = response
+        func_map = self._fetch_function_map(analysis_id=analysis_id)
 
-        self._match_functions(func_map=function_mapping, bv=bv)
+        self._match_functions(func_map=func_map, bv=bv)
 
-        self._fetch_basic_and_rebase(bv=bv, analysis_id=analysis_id)
+        return bv

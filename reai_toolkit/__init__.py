@@ -70,7 +70,8 @@ else:
     except Exception as e:
         log_error(f"RevEng.AI | Error listing plugin directory: {e}")
 
-from reai_toolkit.revengai import RevengAIPlugin
+if os.environ.get("REAI_DISABLE_PLUGIN_AUTOLOAD") != "1":
+    from reai_toolkit.revengai import RevengAIPlugin
 
-plugin = RevengAIPlugin()
-log_info("RevEng.AI | Plugin loaded successfully")
+    plugin = RevengAIPlugin()
+    log_info("RevEng.AI | Plugin loaded successfully")

@@ -165,7 +165,7 @@ class Config:
                 self.binary_id = all_analyses[self.sha256]["binary_id"]
                 self.analysis_id = all_analyses[self.sha256]["analysis_id"]
                 self.model_id = all_analyses[self.sha256]["model_id"]
-                AnalysisSyncService(self).sync_analysis_data(analysis_id=self.analysis_id, bv=bv)
+                bv = AnalysisSyncService(self).sync_analysis_data(analysis_id=self.analysis_id, bv=bv)
             else:
                 log_info(f"RevEng.AI | Binary not found in saved configurations, searching in RevEng.AI...")
                 with self.create_api_client() as api_client:
@@ -177,7 +177,7 @@ class Config:
                     self.binary_id = api_response.data.results[0].binary_id
                     self.analysis_id = api_response.data.results[0].analysis_id
                     self.model_id = api_response.data.results[0].model_id
-                    AnalysisSyncService(self).sync_analysis_data(analysis_id=self.analysis_id, bv=bv)
+                    bv = AnalysisSyncService(self).sync_analysis_data(analysis_id=self.analysis_id, bv=bv)
                     log_info(f"RevEng.AI | Binary found in RevEng.AI, binary_id: {self.binary_id}")
                     self.set_current_info(self.binary_id, self.analysis_id, self.model_id)
             

@@ -89,15 +89,15 @@ class MatchCurrentFunction(MatchFeature):
 
             total_matched_functions = 0
             filters = revengai.FunctionMatchingFilters.from_dict({
-                "collections": selected_collections,
-                "binaries": selected_binaries
+                "collection_ids": selected_collections,
+                "binary_ids": selected_binaries
             })
-            
+
             schema_ann_model = revengai.FunctionMatchingRequest.from_dict({
                 "model_id": self.config.model_id,
                 "function_ids": [analyzed_function["function_id"]],
                 "filters": filters,
-                "result_per_function": 20,
+                "results_per_function": 20,
                 "min_similarity": similarity_threshold
             })
             matched_count = 0

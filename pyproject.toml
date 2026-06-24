@@ -7,11 +7,12 @@ name = "plugin-binary-ninja"
 version = "0.0.1"
 requires-python = ">=3.10"
 dependencies = [
-    "revengai>=3.93.0",
+    "revengai>=3.96.3",
     "urllib3>=2.0.0,<2.3.0",
     "libbs==2.15.1",
     "pydantic>=2.12.5",
     "pycparser>=2.22,<3",
+    "requests>=2.32",
 ]
 
 [tool.setuptools.packages.find]
@@ -22,4 +23,13 @@ package = false
 
 dev-dependencies = [
     "pyside6>=6.8.2",
+    "pytest>=8.3",
+    "pytest-mock>=3.14",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--import-mode=importlib"
+markers = [
+    "headless: tests that require Binary Ninja headless (a commercial license). Run with `pytest -m headless`; runs the unit/schema suite with `pytest -m 'not headless'`.",
 ]

@@ -114,7 +114,7 @@ class AutoUnstrip:
                 api_response = api_instance.auto_unstrip(analysis_id, auto_unstrip_request)
                 
                 if api_response.status.lower() == "error":
-                    raise Exception(api_response.error)
+                    raise Exception(api_response.error_message)
                 elif api_response.status.lower() != "completed":
                     while True:
                         time.sleep(3)
@@ -122,12 +122,12 @@ class AutoUnstrip:
                         if api_response.status.lower() == "completed":
                             break
                         if api_response.status.lower() == "error":
-                            raise Exception(api_response.error)
+                            raise Exception(api_response.error_message)
 
                 if api_response.status.lower() == "completed":
                     matches = api_response.matches
                 else:
-                    raise Exception(api_response.error)
+                    raise Exception(api_response.error_message)
             for match in matches:
                 print(match, flush=True)
                 try:
