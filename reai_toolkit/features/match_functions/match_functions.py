@@ -114,7 +114,7 @@ class MatchFunctions(MatchFeature):
                 "function_ids": function_ids,
                 "min_similarity": 0,
                 "filters": filters,
-                "result_per_function": 1
+                "results_per_function": 1
             })
             matched_count = 0
             while True:
