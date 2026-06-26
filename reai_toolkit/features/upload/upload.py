@@ -5,10 +5,29 @@ from os.path import basename
 from reai_toolkit.utils import PeriodicChecker
 from reai_toolkit.utils.core.sync import AnalysisSyncService
 
+ENTHUSIAST_TIER = "ENTHUSIAST"
+
 class BinaryUploader:
     def __init__(self, config):
         self.config = config
- 
+
+    def get_user_tier(self):
+        """Fetch the authenticated user's subscription tier via GET /v2/iam/me.
+
+        Returns (success, tier) where ``tier`` is the raw tier string
+        (e.g. "ENTHUSIAST") or None when the lookup fails.
+        """
+        try:
+            with self.config.create_api_client() as api_client:
+                api_instance = revengai.IAMUsersApi(api_client)
+                user = api_instance.get_me()
+                tier = user.tier
+            log_info(f"RevEng.AI | User tier: {tier}")
+            return True, tier
+        except Exception as e:
+            log_error(f"RevEng.AI | Failed to get user tier: {str(e)}")
+            return False, None
+
     def get_models(self, bv: BinaryView):
         try:
             with self.config.create_api_client() as api_client:
