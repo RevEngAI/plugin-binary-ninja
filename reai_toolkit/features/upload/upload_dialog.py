@@ -1,7 +1,13 @@
 from binaryninja import log_error
 from PySide6.QtCore import QCoreApplication
 from reai_toolkit.utils import create_progress_dialog, DataThread
+from reai_toolkit.features.upload.upload import ENTHUSIAST_TIER
 from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QPushButton, QRadioButton, QButtonGroup, QLineEdit, QGroupBox, QFileDialog, QMessageBox
+
+PRIVATE_DISABLED_TOOLTIP = (
+    "Private analyses aren't available on the Enthusiast tier.\n"
+    "Upgrade your plan to create private analyses."
+)
 
 class UploadDialog(QDialog):
     def __init__(self, config, uploader, bv):
@@ -55,7 +61,9 @@ class UploadDialog(QDialog):
         privacy_layout.addWidget(self.public_radio)
         privacy_group.setLayout(privacy_layout)
         layout.addWidget(privacy_group)
-        
+
+        self._apply_tier_restrictions()
+
         button_layout = QHBoxLayout()
         self.process_button = QPushButton("Process")
         self.process_button.setStyleSheet("""
@@ -89,7 +97,22 @@ class UploadDialog(QDialog):
         
         self.show()
         QCoreApplication.processEvents()
-            
+
+    def _apply_tier_restrictions(self):
+        """Disable private-analysis creation for tiers that aren't allowed it.
+
+        Enthusiast-tier accounts can't create private analyses, so the
+        "Private to you" option is disabled and the upload is forced to
+        public. A tooltip explains why on hover. If the tier lookup fails the
+        option is left enabled (the backend still enforces the restriction).
+        """
+        ok, tier = self.uploader.get_user_tier()
+        if ok and tier == ENTHUSIAST_TIER:
+            self.private_radio.setChecked(False)
+            self.private_radio.setEnabled(False)
+            self.private_radio.setToolTip(PRIVATE_DISABLED_TOOLTIP)
+            self.public_radio.setChecked(True)
+
     def upload_binary(self):
         self.progress = create_progress_dialog(self, "RevEng.AI Upload", "Uploading binary to RevEng.AI...")
         self.progress.show()

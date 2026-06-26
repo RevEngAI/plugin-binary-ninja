@@ -48,3 +48,24 @@ def test_upload_file_surfaces_error(uploader, mocker, tmp_path):
 
     assert ok is False
     assert "boom" in message
+
+
+def test_get_user_tier_returns_tier(uploader, mocker):
+    api = mocker.patch.object(upload_mod.revengai, "IAMUsersApi").return_value
+    api.get_me.return_value.tier = upload_mod.ENTHUSIAST_TIER
+
+    ok, tier = uploader.get_user_tier()
+
+    assert ok is True
+    assert tier == upload_mod.ENTHUSIAST_TIER
+    api.get_me.assert_called_once_with()
+
+
+def test_get_user_tier_surfaces_failure(uploader, mocker):
+    api = mocker.patch.object(upload_mod.revengai, "IAMUsersApi").return_value
+    api.get_me.side_effect = Exception("boom")
+
+    ok, tier = uploader.get_user_tier()
+
+    assert ok is False
+    assert tier is None
