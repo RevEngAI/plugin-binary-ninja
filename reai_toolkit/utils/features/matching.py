@@ -9,6 +9,9 @@ from threading import Event
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 class MatchFeature:
+    _POLL_INTERVAL = 3.0
+    _POLL_TIMEOUT = 1200.0
+
     def __init__(self, config):
         self.config = config
         self.base_addr = None
@@ -27,7 +30,15 @@ class MatchFeature:
     def clear_cancelled(self):
         log_info("RevEng.AI | Clearing cancelled event...")
         self.cancelled.clear()
-    
+
+    @staticmethod
+    def _matching_error_message(messages) -> str:
+        """Build a human-readable error from a matching workflow's progress messages."""
+        if not messages:
+            return "Function matching failed."
+        errors = [m.text for m in messages if (getattr(m, "level", "") or "").upper() == "ERROR"]
+        return "; ".join(errors or [messages[-1].text])
+
 
     # Search collections/Binaries Process Functions
     def search_items(self, bv: BinaryView, options: Dict[str, Any]):
