@@ -32,11 +32,11 @@ class MatchCurrentFunction(MatchFeature):
             function_addr = options.get("function", None)
 
             functions_containing = bv.get_functions_containing(function_addr)
-            
+
             if not functions_containing:
                 log_error(f"RevEng.AI | Function not found at 0x{function_addr:x}")
                 raise Exception("Function not found at address")
-            
+
             function = functions_containing[0]
             log_info(f"RevEng.AI | Function: {function.name} at 0x{function.start:x}")
 
@@ -44,7 +44,7 @@ class MatchCurrentFunction(MatchFeature):
                 selected_collections = [int(c) for c in selected_collections_string.split(",")]
             if selected_binaries_string:
                 selected_binaries = [int(b) for b in selected_binaries_string.split(",")]
-            
+
             log_info(f"RevEng.AI | Selected collections: {selected_collections}")
             log_info(f"RevEng.AI | Selected binaries: {selected_binaries}")
 
@@ -55,18 +55,16 @@ class MatchCurrentFunction(MatchFeature):
             analysis_id = self.config.get_analysis_id(bv)
             if not analysis_id:
                 raise Exception("Analysis not found. Please choose one using the 'Attach to existing' feature.")
-            
+
             if self.cancelled.is_set():
                 return False, "Operation cancelled"
-            
+
             with self.config.create_api_client() as api_client:
                 analysis_core_instance = revengai.AnalysesResultsMetadataApi(api_client)
                 analyzed_functions = analysis_core_instance.get_functions_list(analysis_id)
                 analyzed_functions = analyzed_functions.to_dict()["data"]["functions"]
             if self.cancelled.is_set():
                 return False, "Operation cancelled"
-            
-            function_ids = []
 
             log_info(f"RevEng.AI | Found {len(analyzed_functions)} analyzed functions")
 
@@ -87,102 +85,121 @@ class MatchCurrentFunction(MatchFeature):
                 for func in analyzed_functions
             }
 
-            total_matched_functions = 0
-            filters = revengai.FunctionMatchingFilters.from_dict({
-                "collection_ids": selected_collections,
-                "binary_ids": selected_binaries
+            function_ids = [analyzed_function["function_id"]]
+
+            filters = revengai.MatchFilters.from_dict({
+                "collection_ids": selected_collections or None,
+                "binary_ids": selected_binaries or None,
             })
 
-            schema_ann_model = revengai.FunctionMatchingRequest.from_dict({
-                "model_id": self.config.model_id,
-                "function_ids": [analyzed_function["function_id"]],
+            start_body = revengai.StartMatchingForFunctionsInputBody.from_dict({
+                "function_ids": function_ids,
                 "filters": filters,
                 "results_per_function": 20,
-                "min_similarity": similarity_threshold
+                "min_similarity": similarity_threshold,
             })
-            matched_count = 0
+
+            with self.config.create_api_client() as api_client:
+                analysis_core_instance = revengai.FunctionsCoreApi(api_client)
+                analysis_core_instance.start_functions_matching(start_body)
+
+            elapsed = 0.0
             while True:
-                time.sleep(3)
+                if self.cancelled.is_set():
+                    return False, "Operation cancelled"
+                time.sleep(self._POLL_INTERVAL)
+                elapsed += self._POLL_INTERVAL
+
                 with self.config.create_api_client() as api_client:
                     analysis_core_instance = revengai.FunctionsCoreApi(api_client)
-                    functions_by_distance = analysis_core_instance.batch_function_matching( schema_ann_model)
+                    status = analysis_core_instance.get_functions_matching_status(function_ids=function_ids)
 
-                    #################
-                    for function_by_distance in functions_by_distance.matches:
-                        try:
-                            if len(function_by_distance.matched_functions) == 0:
-                                continue
-                            log_info(f"RevEng.AI | Matched function: {function_by_distance.matched_functions[0]}")
-                            line = {
-                                "icon_path": f"{os.path.dirname(__file__)}/../../images/failed.png",
-                                "icon_text": "Failed",
-                                "source_function_id": function_by_distance.function_id,
-                                "matched_function_name": function_by_distance.matched_functions[0].function_name,
-                                "matched_mangled_name": function_by_distance.matched_functions[0].mangled_name,
-                                "signature": "N/A",
-                                "matched_hash": function_by_distance.matched_functions[0].sha_256_hash,
-                                "matched_binary_name": function_by_distance.matched_functions[0].binary_name,
-                                "similarity": f"{(function_by_distance.matched_functions[0].similarity):.2f}%",
-                                "confidence": f"{(function_by_distance.matched_functions[0].confidence):.2f}%",
-                                "nearest_neighbor_id": function_by_distance.matched_functions[0].function_id,
-                            }
+                log_info(f"RevEng.AI | Matching status: {status.status} ({status.step_index}/{status.steps_total})")
 
-                            func_addr = id_to_addr.get(function_by_distance.function_id)
-                            log_info(f"RevEng.AI | Function ID: {function_by_distance.function_id}")
-                            if not func_addr:
-                                line["error"] = "Function not found in binary"
-                                if line not in result["data"]:
-                                    result["data"].append(line)
-                                continue
-                            
-                            source_function = bv.get_function_at(func_addr)
-                            if not source_function:
-                                source_function = bv.get_function_at(func_addr + bv.image_base)
-                            if not source_function:
-                                line["error"] = "Function not found in binary"
-                                if line not in result["data"]:
-                                    result["data"].append(line)
-                                continue
-                            line["function_address"] = source_function.start
-                            log_info(f"RevEng.AI | Function: {source_function.name} at {source_function.start:x}")
+                if status.status == revengai.TaskStatus.COMPLETED:
+                    break
+                if status.status == revengai.TaskStatus.FAILED:
+                    raise Exception(self._matching_error_message(status.messages))
+                if elapsed >= self._POLL_TIMEOUT:
+                    raise Exception(f"Function matching timed out after {self._POLL_TIMEOUT:.0f}s")
 
-                            if not line["matched_function_name"] or line["matched_function_name"].startswith(("sub_", "FUN_")):
-                                    line["error"] = "Function name is also debug symbol"
-                                    log_info(f"RevEng.AI | Function name is also debug symbol: {line}")
-                                    if line not in result["data"]:
-                                        result["data"].append(line)
-                                    continue
-                            
-                            if function_by_distance.matched_functions[0].similarity < similarity_threshold:
-                                    line["error"] = "Function score is below confidence threshold"
-                                    log_info(f"RevEng.AI | Function score is below confidence threshold: {line}")
-                            else:
-                                    line["icon_path"] = f"{os.path.dirname(__file__)}/../../images/success.png"
-                                    line["icon_text"] = "Success"
-                                    matched_count += 1
-                                    
+            if self.cancelled.is_set():
+                return False, "Operation cancelled"
+
+            with self.config.create_api_client() as api_client:
+                analysis_core_instance = revengai.FunctionsCoreApi(api_client)
+                matches_result = analysis_core_instance.get_functions_matches(function_ids=function_ids)
+
+            matched_count = 0
+            for function_by_distance in (matches_result.matches or []):
+                try:
+                    if len(function_by_distance.matched_functions) == 0:
+                        continue
+                    log_info(f"RevEng.AI | Matched function: {function_by_distance.matched_functions[0]}")
+                    line = {
+                        "icon_path": f"{os.path.dirname(__file__)}/../../images/failed.png",
+                        "icon_text": "Failed",
+                        "source_function_id": function_by_distance.function_id,
+                        "matched_function_name": function_by_distance.matched_functions[0].function_name,
+                        "matched_mangled_name": function_by_distance.matched_functions[0].mangled_name,
+                        "signature": "N/A",
+                        "matched_hash": function_by_distance.matched_functions[0].sha_256_hash,
+                        "matched_binary_name": function_by_distance.matched_functions[0].binary_name,
+                        "similarity": f"{(function_by_distance.matched_functions[0].similarity):.2f}%",
+                        "confidence": f"{(function_by_distance.matched_functions[0].confidence):.2f}%",
+                        "nearest_neighbor_id": function_by_distance.matched_functions[0].function_id,
+                    }
+
+                    func_addr = id_to_addr.get(function_by_distance.function_id)
+                    log_info(f"RevEng.AI | Function ID: {function_by_distance.function_id}")
+                    if not func_addr:
+                        line["error"] = "Function not found in binary"
+                        if line not in result["data"]:
+                            result["data"].append(line)
+                        continue
+
+                    source_function = bv.get_function_at(func_addr)
+                    if not source_function:
+                        source_function = bv.get_function_at(func_addr + bv.image_base)
+                    if not source_function:
+                        line["error"] = "Function not found in binary"
+                        if line not in result["data"]:
+                            result["data"].append(line)
+                        continue
+                    line["function_address"] = source_function.start
+                    log_info(f"RevEng.AI | Function: {source_function.name} at {source_function.start:x}")
+
+                    if not line["matched_function_name"] or line["matched_function_name"].startswith(("sub_", "FUN_")):
+                            line["error"] = "Function name is also debug symbol"
+                            log_info(f"RevEng.AI | Function name is also debug symbol: {line}")
                             if line not in result["data"]:
                                 result["data"].append(line)
+                            continue
 
-                        except Exception as e:
-                            log_error(f"RevEng.AI | Error processing function {function_by_distance.function_id}: {str(e)}")
-                    #populate_table_function(result["data"])
-                    #################
-                    if functions_by_distance.status.lower() == "completed":
-                        break
-                    elif functions_by_distance.status.lower() == "error":
-                        raise Exception("Function matching failed")
+                    if function_by_distance.matched_functions[0].similarity < similarity_threshold:
+                            line["error"] = "Function score is below confidence threshold"
+                            log_info(f"RevEng.AI | Function score is below confidence threshold: {line}")
+                    else:
+                            line["icon_path"] = f"{os.path.dirname(__file__)}/../../images/success.png"
+                            line["icon_text"] = "Success"
+                            matched_count += 1
+
+                    if line not in result["data"]:
+                        result["data"].append(line)
+
+                except Exception as e:
+                    log_error(f"RevEng.AI | Error processing function {function_by_distance.function_id}: {str(e)}")
+
             sorted_list = sorted(result["data"], key=parse_confidence, reverse=True)
             result["data"] = sorted_list
-            #populate_table_function(result["data"])
             result["failed"] = len(analyzed_functions) - matched_count
             result["matched"] = matched_count
 
             if self.cancelled.is_set():
                 return False, "Operation cancelled"
-    
+
             return True, result
-            
+
         except Exception as e:
             log_error(f"RevEng.AI | Error matching functions: {str(e)}")
             raise e
@@ -197,14 +214,14 @@ class MatchCurrentFunction(MatchFeature):
                 try:
                     if self.cancelled.is_set():
                         return 0, 0
-                    
+
                     addr = int(result['function_address'])
                     if rename_function_util(self.config, bv, addr, result["matched_function_name"], result["matched_mangled_name"], result["source_function_id"]):
                         renamed_count += 1
-                        
+
                         if result.get('signature_data', None) is not None:
                             log_info(f"RevEng.AI | Applying data types for 0x{addr:x}")
-                            
+
                             if deci is not None:
                                 log_info(f"RevEng.AI | Applying data types for 0x{addr:x} with decompiler {deci}")
                                 try:
@@ -213,14 +230,14 @@ class MatchCurrentFunction(MatchFeature):
                                     log_info(f"RevEng.AI | Successfully applied data types for 0x{addr:x}")
                                 except Exception as e:
                                     log_error(f"RevEng.AI | Failed to apply data types for 0x{addr:x}: {str(e)}")
-                        
-                        
+
+
                 except (ValueError, TypeError):
                     log_error(f"RevEng.AI | Invalid function address: {result}")
                     continue
 
             return renamed_count, datatype_count
-                
+
         except Exception as e:
             log_error(f"RevEng.AI | Error processing rename batch: {str(e)}")
             return 0, 0
@@ -239,25 +256,24 @@ class MatchCurrentFunction(MatchFeature):
 
             with ThreadPoolExecutor(max_workers=4) as executor:
                 future_to_chunk = {
-                    executor.submit(self._process_rename_batch, chunk, bv, deci): i 
+                    executor.submit(self._process_rename_batch, chunk, bv, deci): i
                     for i, chunk in enumerate(chunks)
                 }
 
                 for future in as_completed(future_to_chunk):
                     chunk_index = future_to_chunk[future]
-                    try:    
+                    try:
                         renamed_count, datatype_count = future.result()
                         total_renamed_count += renamed_count
                         log_info(f"RevEng.AI | Chunk {chunk_index} completed: renamed {renamed_count} functions, applied {datatype_count} data types")
                     except Exception as e:
                         log_error(f"RevEng.AI | Error processing chunk {chunk_index}: {str(e)}")
-            
+
             success_message = f"Successfully renamed {total_renamed_count} functions!" if total_renamed_count > 0 else "No functions were renamed!"
-                
+
             log_info(f"RevEng.AI | {success_message}")
 
             return True, success_message
         except Exception as e:
             log_error(f"RevEng.AI | Error renaming functions: {str(e)}")
             return False, str(e)
-    

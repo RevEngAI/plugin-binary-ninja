@@ -34,10 +34,18 @@ API_METHODS = {
         "get_analysis_status",
         "get_analysis_basic_info",
         "get_analysis_function_map",
+        "start_analysis_function_matching",
+        "get_analysis_function_matching_status",
+        "get_analysis_function_matches",
     ],
     "ModelsApi": ["get_models"],
     "AnalysesResultsMetadataApi": ["get_functions_list"],
-    "FunctionsCoreApi": ["analysis_function_matching", "auto_unstrip"],
+    "FunctionsCoreApi": [
+        "start_functions_matching",
+        "get_functions_matching_status",
+        "get_functions_matches",
+        "auto_unstrip",
+    ],
     "FunctionsRenamingHistoryApi": ["rename_function_id"],
     "FunctionsDataTypesApi": [
         "generate_function_data_types_for_functions",
@@ -120,9 +128,24 @@ def test_analysis_id_methods_accept_analysis_id():
         assert "analysis_id" in _params(getattr(revengai.AnalysesCoreApi, method))
 
 
-def test_function_matching_accepts_request_kwargs():
-    params = _params(revengai.FunctionsCoreApi.analysis_function_matching)
-    assert {"analysis_id", "analysis_function_matching_request"} <= params
+def test_start_functions_matching_accepts_request_kwargs():
+    params = _params(revengai.FunctionsCoreApi.start_functions_matching)
+    assert "start_matching_for_functions_input_body" in params
+
+
+def test_functions_matching_status_and_results_accept_function_ids():
+    for method in ("get_functions_matching_status", "get_functions_matches"):
+        assert "function_ids" in _params(getattr(revengai.FunctionsCoreApi, method))
+
+
+def test_start_analysis_function_matching_accepts_request_kwargs():
+    params = _params(revengai.AnalysesCoreApi.start_analysis_function_matching)
+    assert {"analysis_id", "start_matching_for_analysis_input_body"} <= params
+
+
+def test_analysis_matching_status_and_results_accept_analysis_id():
+    for method in ("get_analysis_function_matching_status", "get_analysis_function_matches"):
+        assert "analysis_id" in _params(getattr(revengai.AnalysesCoreApi, method))
 
 
 def test_auto_unstrip_accepts_request_kwargs():
@@ -157,9 +180,9 @@ def test_analysis_create_request_has_plugin_fields():
     } <= set(revengai.AnalysisCreateRequest.model_fields)
 
 
-def test_function_matching_filters_has_plugin_fields():
-    assert {"collection_ids", "binary_ids"} <= set(
-        revengai.FunctionMatchingFilters.model_fields
+def test_match_filters_has_plugin_fields():
+    assert {"collection_ids", "binary_ids", "debug_types"} <= set(
+        revengai.MatchFilters.model_fields
     )
 
 
@@ -275,33 +298,35 @@ def test_inline_comment_has_plugin_fields():
     assert {"line", "comment"} <= set(InlineComment.model_fields)
 
 
-def test_matching_request_per_function_count_field_name():
-    assert "results_per_function" in revengai.AnalysisFunctionMatchingRequest.model_fields
-    assert "result_per_function" not in revengai.AnalysisFunctionMatchingRequest.model_fields
+def test_start_matching_input_bodies_have_per_function_count_field():
+    for model in (
+        revengai.StartMatchingForAnalysisInputBody,
+        revengai.StartMatchingForFunctionsInputBody,
+    ):
+        assert "results_per_function" in model.model_fields
+        assert "result_per_function" not in model.model_fields
 
 
-def test_matching_request_from_dict_honors_results_per_function():
-    request = revengai.AnalysisFunctionMatchingRequest.from_dict(
-        {
-            "min_similarity": 0,
-            "filters": {"collection_ids": [], "binary_ids": []},
-            "results_per_function": 7,
-        }
+def test_start_matching_for_functions_input_has_function_ids_field():
+    assert "function_ids" in revengai.StartMatchingForFunctionsInputBody.model_fields
+
+
+def test_get_matches_output_has_status_and_matches():
+    assert {"status", "matches"} <= set(revengai.GetMatchesOutputBody.model_fields)
+
+
+def test_get_matches_status_output_has_progress_fields():
+    assert {"status", "step", "step_index", "steps_total", "messages"} <= set(
+        revengai.GetMatchesStatusOutputBody.model_fields
     )
-    assert request.to_dict().get("results_per_function") == 7
-
-
-def test_function_matching_request_has_function_ids_field():
-    assert "function_ids" in revengai.FunctionMatchingRequest.model_fields
 
 
 def test_match_functions_request_shape_is_honored():
-    filters = revengai.FunctionMatchingFilters.from_dict(
+    filters = revengai.MatchFilters.from_dict(
         {"collection_ids": [1], "binary_ids": [2]}
     )
-    request = revengai.AnalysisFunctionMatchingRequest.from_dict(
+    request = revengai.StartMatchingForAnalysisInputBody.from_dict(
         {
-            "function_ids": [1, 2, 3],
             "min_similarity": 0,
             "filters": filters,
             "results_per_function": 1,
@@ -314,12 +339,11 @@ def test_match_functions_request_shape_is_honored():
 
 
 def test_match_current_function_request_shape_is_honored():
-    filters = revengai.FunctionMatchingFilters.from_dict(
+    filters = revengai.MatchFilters.from_dict(
         {"collection_ids": [1], "binary_ids": [2]}
     )
-    request = revengai.FunctionMatchingRequest.from_dict(
+    request = revengai.StartMatchingForFunctionsInputBody.from_dict(
         {
-            "model_id": 7,
             "function_ids": [42],
             "filters": filters,
             "results_per_function": 20,

@@ -45,9 +45,10 @@ def test_match_current_function_pipeline(bv, mocker):
     by_distance.function_id = 100
     by_distance.matched_functions = [matched]
     core_api = mocker.patch.object(mcf_mod.revengai, "FunctionsCoreApi").return_value
-    core_api.batch_function_matching.return_value = MagicMock(
-        status="completed", matches=[by_distance]
+    core_api.get_functions_matching_status.return_value = MagicMock(
+        status="COMPLETED", step_index=1, steps_total=1
     )
+    core_api.get_functions_matches.return_value = MagicMock(matches=[by_distance])
 
     ok, result = feature.match_functions(
         bv, {"function": func.start, "similarity_threshold": 90}
