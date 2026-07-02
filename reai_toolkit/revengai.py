@@ -1,7 +1,6 @@
 from binaryninja import log_info
 from reai_toolkit.features import ConfigurationFeature
 from reai_toolkit.features import UploadFeature
-from reai_toolkit.features import AutoUnstripFeature
 from reai_toolkit.features import ChooseSourceFeature
 from reai_toolkit.features import MatchFunctionsFeature
 from reai_toolkit.features import MatchCurrentFunctionFeature
@@ -14,7 +13,6 @@ class RevengAIPlugin:
         log_info("RevEng.AI | Initializing plugin")
         self.config_feature = ConfigurationFeature()
         self.upload_feature = UploadFeature(self.config_feature.get_config())
-        self.auto_unstrip_feature = AutoUnstripFeature(self.config_feature.get_config())
         self.choose_source_feature = ChooseSourceFeature(self.config_feature.get_config())
         self.match_functions_feature = MatchFunctionsFeature(self.config_feature.get_config())
         self.match_current_function_feature = MatchCurrentFunctionFeature(self.config_feature.get_config())
@@ -28,7 +26,6 @@ class RevengAIPlugin:
         log_info("RevEng.AI | Registering features")
         self.config_feature.register()
         self.upload_feature.register()
-        self.auto_unstrip_feature.register()
         self.choose_source_feature.register()
         self.match_functions_feature.register()
         self.match_current_function_feature.register()

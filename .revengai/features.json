@@ -9,9 +9,6 @@
     "apply_existing_analysis": {
       "status": "yes"
     },
-    "binary_auto_analysis": {
-      "status": "yes"
-    },
     "binary_upload": {
       "note": "No explicit command or feature to upload binaries. Binaries are uploaded on creation of a new analysis only.",
       "status": "yes"

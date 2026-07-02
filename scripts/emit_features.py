@@ -7,7 +7,6 @@ PLUGIN = "binary_ninja"
 
 FEATURE_CLASSES = {
     "UploadFeature": ("analyse_binary", "yes"),
-    "AutoUnstripFeature": ("binary_auto_analysis", "yes"),
     "ChooseSourceFeature": ("apply_existing_analysis", "yes"),
     "MatchCurrentFunctionFeature": ("rename_from_similar_function", "yes"),
     "AIDecompilerFeature": ("function_decompilation", "yes"),

@@ -7,7 +7,6 @@ from revengai.models.analysis_function_mapping import AnalysisFunctionMapping
 from revengai.models.app_api_rest_v2_functions_types_function import (
     AppApiRestV2FunctionsTypesFunction,
 )
-from revengai.models.auto_unstrip_response import AutoUnstripResponse
 from revengai.models.basic import Basic
 from revengai.models.binary_search_result import BinarySearchResult
 from revengai.models.comments_data import CommentsData
@@ -44,7 +43,6 @@ API_METHODS = {
         "start_functions_matching",
         "get_functions_matching_status",
         "get_functions_matches",
-        "auto_unstrip",
     ],
     "FunctionsRenamingHistoryApi": ["rename_function_id"],
     "FunctionsDataTypesApi": [
@@ -146,11 +144,6 @@ def test_start_analysis_function_matching_accepts_request_kwargs():
 def test_analysis_matching_status_and_results_accept_analysis_id():
     for method in ("get_analysis_function_matching_status", "get_analysis_function_matches"):
         assert "analysis_id" in _params(getattr(revengai.AnalysesCoreApi, method))
-
-
-def test_auto_unstrip_accepts_request_kwargs():
-    params = _params(revengai.FunctionsCoreApi.auto_unstrip)
-    assert {"analysis_id", "auto_unstrip_request"} <= params
 
 
 def test_rename_function_id_accepts_kwargs():
@@ -267,11 +260,6 @@ def test_matched_function_suggestion_has_plugin_fields():
         "suggested_demangled_name",
         "suggested_name",
     } <= set(MatchedFunctionSuggestion.model_fields)
-
-
-def test_auto_unstrip_response_has_status_and_matches():
-    fields = set(AutoUnstripResponse.model_fields)
-    assert {"status", "matches", "error_message"} <= fields
 
 
 def test_workflow_progress_exposes_status():
