@@ -15,6 +15,9 @@ class Config:
         self.sha256 = ""
         self.api_config = None
         self.is_configured = False
+        self.binary_id = None
+        self.analysis_id = None
+        self.model_id = None
         self.user_agent = "Binary Ninja/RevEng.AI_Plugin"
         self.reveng_header = "X-RevEng-Application"
         self._load_config()

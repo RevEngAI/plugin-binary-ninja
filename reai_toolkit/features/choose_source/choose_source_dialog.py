@@ -33,7 +33,7 @@ class ChooseSourceDialog(QDialog):
         info_layout = QVBoxLayout()
         title_label = QLabel("Select Analysis Source")
         title_label.setStyleSheet("font-size: 18px; font-weight: bold;")
-        description_label = QLabel("Choose the source for your binary analysis. This selection will be used for all subsequent features in the plugin, including auto-unstripping, function analysis, and other operations.\n\n")
+        description_label = QLabel("Choose the source for your binary analysis. This selection will be used for all subsequent features in the plugin, including function analysis and other operations.\n\n")
         description_label.setWordWrap(True)
         info_layout.addWidget(title_label)
         info_layout.addWidget(description_label)
