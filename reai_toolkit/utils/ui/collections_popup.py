@@ -36,7 +36,7 @@ class CollectionsPopup(QDialog):
         #self.search_input.returnPressed.connect(self._search_collections)
 
         description_label = QLabel(
-            "Search (e.g. sha_256_hash:{}, tag:{}, collection_name:{}, function_name:{}, model_name:{})"
+            "Search collections by name (e.g. collection_name:{} or a free-text term)"
         )
         description_label.setWordWrap(True)
 
@@ -78,7 +78,9 @@ class CollectionsPopup(QDialog):
         self.collections_table.setSelectionMode(QTableWidget.MultiSelection)
         self.collections_table.setAlternatingRowColors(True)
         self.collections_table.verticalHeader().setVisible(False)
-        
+        self.collections_table.itemChanged.connect(self.on_checkbox_changed)
+        self.collections_table.cellClicked.connect(self.on_checkbox_changed)
+
         search_layout.addWidget(self.collections_table)
         search_group.setLayout(search_layout)
         parent_layout.addWidget(search_group)
@@ -134,50 +136,46 @@ class CollectionsPopup(QDialog):
                     
     def populate_collections_table(self):
         self.collections_table.setRowCount(len(self.current_collections))
+        # Block signals while filling cells so on_checkbox_changed doesn't fire mid-populate.
+        self.collections_table.blockSignals(True)
         try:
-            self.collections_table.itemChanged.disconnect()
-        except Exception:
-            pass
-        
-        for row, collection in enumerate(self.current_collections):
-            select_item = QTableWidgetItem()
-            select_item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsSelectable)
-            select_item.setCheckState(Qt.Unchecked)
-            self.collections_table.setItem(row, 0, select_item)
-            
-            columns = [
-                (1, "name", lambda x: x),
-                (2, "id", lambda x: x),
-                (3, "scope", lambda x: x),
-                (4, "owner", lambda x: x),
-                (5, "date", lambda x: x)
-            ]
+            for row, collection in enumerate(self.current_collections):
+                select_item = QTableWidgetItem()
+                select_item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+                select_item.setCheckState(Qt.Unchecked)
+                self.collections_table.setItem(row, 0, select_item)
 
-            for col_idx, field, transform in columns:
-                value = transform(collection.get(field, ""))
-                item = QTableWidgetItem(value)
-                item.setFlags(item.flags() & ~Qt.ItemIsEditable)
-                item.setData(Qt.UserRole, collection)
-                item.setSelected(False)
-                item.setToolTip(value)
-                self.collections_table.setItem(row, col_idx, item)
+                columns = [
+                    (1, "name", lambda x: x),
+                    (2, "id", lambda x: x),
+                    (3, "scope", lambda x: x),
+                    (4, "owner", lambda x: x),
+                    (5, "date", lambda x: x)
+                ]
 
-        self.collections_table.itemChanged.connect(self.on_checkbox_changed)
-        try:
-            self.collections_table.cellClicked.disconnect()
-        except Exception:
-            pass  
-        self.collections_table.cellClicked.connect(self.on_checkbox_changed)
+                for col_idx, field, transform in columns:
+                    value = transform(collection.get(field, ""))
+                    item = QTableWidgetItem(value)
+                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+                    item.setData(Qt.UserRole, collection)
+                    item.setSelected(False)
+                    item.setToolTip(value)
+                    self.collections_table.setItem(row, col_idx, item)
+        finally:
+            self.collections_table.blockSignals(False)
 
     def on_checkbox_changed(self, item_or_row, column=None):
-        if isinstance(item_or_row, QTableWidgetItem): 
+        if isinstance(item_or_row, QTableWidgetItem):
             row = item_or_row.row()
             is_checkbox = item_or_row.column() == 0
         else:
             row = item_or_row
             is_checkbox = column == 0 if column is not None else False
 
-        collection = self.collections_table.item(row, 1).data(Qt.UserRole)
+        name_item = self.collections_table.item(row, 1)
+        if name_item is None:
+            return
+        collection = name_item.data(Qt.UserRole)
         collection_id = str(collection.get("id", "")) if collection else None
             
         if collection and collection_id:
@@ -213,6 +211,7 @@ class CollectionsPopup(QDialog):
             for collection in self.selected_collections:
                 final_string += f"{collection.get('id', '')},"
             final_string = final_string[:-1] if final_string else ""
-            self.write_selected_collections(final_string)
+            if self.write_selected_collections:
+                self.write_selected_collections(final_string)
             log_info(f"RevEng.AI | Total selected collections: {len(self.selected_collections)}")
 

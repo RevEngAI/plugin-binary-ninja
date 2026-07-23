@@ -20,21 +20,18 @@ class MatchFunctionsDialog(QDialog):
 
     def _show_collections_popup(self):
         log_info(f"RevEng.AI | Showing collections popup")
-        self.collections_popup.show()
+        self.collections_popup.open()
 
     def _show_binaries_popup(self):
         log_info(f"RevEng.AI | Showing binaries popup")
-        self.binaries_popup.show()
+        self.binaries_popup.open()
 
     def eventFilter(self, obj, event):
-        if event.type() in (QEvent.MouseButtonPress, QEvent.MouseButtonRelease):
-            if isinstance(obj, QLineEdit):
-                if obj.objectName() == "edit_collections":
-                    self._show_collections_popup()
-                elif obj.objectName() == "edit_binaries":
-                    self._show_binaries_popup()
-            else:
-                log_info(f"RevEng.AI | Mouse button press")
+        if event.type() == QEvent.MouseButtonRelease and isinstance(obj, QLineEdit):
+            if obj.objectName() == "edit_collections":
+                self._show_collections_popup()
+            elif obj.objectName() == "edit_binaries":
+                self._show_binaries_popup()
         return super().eventFilter(obj, event)
 
     
