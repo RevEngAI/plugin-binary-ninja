@@ -16,17 +16,17 @@ from revengai.models.function_mapping import FunctionMapping
 from revengai.models.function_match import FunctionMatch
 from revengai.models.inline_comment import InlineComment
 from revengai.models.matched_function import MatchedFunction
-from revengai.models.matched_function_suggestion import MatchedFunctionSuggestion
 from revengai.models.status_output import StatusOutput
 from revengai.models.summary_data import SummaryData
 from revengai.models.task_status import TaskStatus
 from revengai.models.workflow_progress import WorkflowProgress
 
-PINNED = (3, 96, 3)
+PINNED = (3, 123, 0)
 
 API_METHODS = {
     "ConfigApi": ["get_config"],
-    "SearchApi": ["search_binaries", "search_collections"],
+    "SearchApi": ["search_binaries"],
+    "CollectionsApi": ["v3_list_collections"],
     "AnalysesCoreApi": [
         "upload_file",
         "create_analysis",
@@ -99,16 +99,25 @@ def test_search_binaries_accepts_plugin_kwargs():
     } <= _params(revengai.SearchApi.search_binaries)
 
 
-def test_search_collections_accepts_plugin_kwargs():
+def test_v3_list_collections_accepts_plugin_kwargs():
     assert {
-        "partial_collection_name",
-        "partial_binary_name",
-        "partial_binary_sha256",
-        "tags",
-        "model_name",
-        "page",
-        "page_size",
-    } <= _params(revengai.SearchApi.search_collections)
+        "search_term",
+        "filters",
+        "limit",
+        "offset",
+    } <= _params(revengai.CollectionsApi.v3_list_collections)
+
+
+def test_collection_list_item_has_plugin_fields():
+    from revengai.models.collection_list_item_body import CollectionListItemBody
+
+    assert {
+        "collection_id",
+        "collection_name",
+        "collection_owner",
+        "collection_scope",
+        "updated_at",
+    } <= set(CollectionListItemBody.model_fields)
 
 
 def test_upload_file_accepts_plugin_kwargs():
@@ -251,15 +260,6 @@ def test_matched_function_has_plugin_fields():
         "similarity",
         "confidence",
     } <= set(MatchedFunction.model_fields)
-
-
-def test_matched_function_suggestion_has_plugin_fields():
-    assert {
-        "function_id",
-        "function_vaddr",
-        "suggested_demangled_name",
-        "suggested_name",
-    } <= set(MatchedFunctionSuggestion.model_fields)
 
 
 def test_workflow_progress_exposes_status():

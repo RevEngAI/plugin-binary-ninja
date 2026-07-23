@@ -1,6 +1,5 @@
 from binaryninja import BinaryView, log_info, log_error
 from typing import List, Dict, Tuple, Any
-from datetime import datetime
 import revengai
 import re
 import time
@@ -53,7 +52,7 @@ class MatchFeature:
                     items = self._search_collection(query)
                 else:
                     items = self._search_binaries(query)
-                log_info(f"RevEng.AI | Items: {items}")
+                log_info(f"RevEng.AI | Found {len(items)} {item_type.lower()} item(s)")
                 if not items:
                     return False, "No items found"
                 return True, items
@@ -95,27 +94,31 @@ class MatchFeature:
 
         return result  
     
+    @staticmethod
+    def _as_search_term(value: Any) -> str | None:
+        if isinstance(value, list):
+            value = value[0] if value else None
+        return value or None
+
     def _search_collection(self, query: Dict[str, Any] = {}):
         try:
             output = []
             log_info("RevEng.AI | Searching for collections")
+            search_term = self._as_search_term(query.get("collection_name") or query.get("query"))
             with self.config.create_api_client() as api_client:
-                api_instance = revengai.SearchApi(api_client)
-                api_response = api_instance.search_collections(
-                    page = 1, 
-                    page_size = 20, 
-                    partial_collection_name = query.get("collection_name"), 
-                    partial_binary_name = query.get("binary_name") , 
-                    partial_binary_sha256 = query.get("sha_256_hash"), 
-                    tags = query.get("tags"), 
-                    model_name = query.get("model_name"))
-                for collection in api_response.data.results:
+                api_instance = revengai.CollectionsApi(api_client)
+                api_response = api_instance.v3_list_collections(
+                    search_term=search_term,
+                    limit=20,
+                    offset=0,
+                )
+                for collection in api_response.results or []:
                     item = {
                         "name": collection.collection_name,
                         "id": str(collection.collection_id),
-                        "scope": collection.scope,
-                        "owner": collection.owned_by,
-                        "date": collection.last_updated_at.strftime("%m/%d/%Y %H:%M"),
+                        "scope": collection.collection_scope,
+                        "owner": collection.collection_owner,
+                        "date": collection.updated_at.strftime("%m/%d/%Y %H:%M"),
                     }
                     output.append(item)
             return output
@@ -152,118 +155,7 @@ class MatchFeature:
         except Exception as e:
             log_error(f"RevEng.AI | Error searching collections: {str(e)}")
             return []
-        
-    
-    def _search_items(self, query: Dict[str, Any] = {}, item_type: str = "Collection") -> None:
 
-        def parse_date(date_str: str) -> str:
-            dt = datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%S.%f")
-            return dt.strftime("%Y-%m-%d %H:%M:%S")
-
-        def fetch_results(api_func, label: str) -> List[Dict[str, Any]]:
-            try:
-                log_info(f"RevEng.AI | Query: {query}")
-                response = api_func(query=query, page=1, page_size=1024).json()
-                results = response.get("data", {}).get("results", [])
-                log_info(f"Found {len(results)} {label.lower()}s")
-                return results
-            
-            except Exception as e:
-                log_error(f"RevEng.AI | Getting information failed. Reason: {str(e)}")
-                return []
-
-        def build_items(items_list: List[Dict[str, Any]], item_type: str) -> List[Tuple]:
-            items = []
-            for item in items_list:
-                name_key = "collection_name" if item_type == "Collection" else "binary_name"
-                date_key = "last_updated_at" if item_type == "Collection" else "created_at"
-                id_key = "collection_id" if item_type == "Collection" else "binary_id"
-                icon = "lock.png" if item_type == "Collection" and item["scope"] == "PRIVATE" else \
-                       "unlock.png" if item_type == "Collection" else "file.png"
-                
-                items.append({
-                    "name": item[name_key],
-                    "id": item[id_key],
-                    "icon": icon,
-                    "date": parse_date(item[date_key]),
-                    "owner": item["owned_by"],
-                    "id": item[id_key]
-                })
-            return items
-
-        def search_collections(self, query: Dict[str, Any] = {}) -> None:
-            page = 1
-            while True:
-                log_info(f"RevEng.AI | Searching for collections on page {page}")
-                with self.config.create_api_client() as api_client:
-                    api_instance = revengai.SearchApi(api_client)
-                    api_response = api_instance.search_collections(
-                        page = page, 
-                        page_size = 20, 
-                        partial_collection_name = query.get("collection_name"), 
-                        partial_binary_name = query.get("binary_name") , 
-                        partial_binary_sha256 = query.get("sha_256_hash"), 
-                        tags = query.get("tags"), 
-                        model_name = query.get("model_name"))
-                    if not len(api_response.data.results):
-                        break
-                    for collection in api_response.data.results:
-                        item = {
-                            "name": collection.collection_name,
-                            "icon": "lock.png" if collection.scope == "PRIVATE" else "unlock.png",
-                            "type": "Collection",
-                            "date": collection.last_updated_at.strftime("%m/%d/%Y %H:%M"),
-                            "model_name": collection.model_name,
-                            "owner": collection.owned_by,
-                            "id": collection.collection_id
-                        }
-                        output.append(item)
-                    page += 1
-            return output
-
-        def search_binaries(self, query: Dict[str, Any] = {}) -> None:
-            return self._search_items(query, "Binary")
-
-        try:
-            log_info(f"RevEng.AI | Searching for {item_type} with '{query or 'N/A'}'")
-            output = []
-            
-            page = 1
-            while True:
-                log_info(f"RevEng.AI | Searching for binaries on page {page}")
-                with self.config.create_api_client() as api_client:
-                    api_instance = revengai.SearchApi(api_client)
-                    api_response = api_instance.search_binaries(
-                        page = page, 
-                        page_size = 20, 
-                        partial_name = query.get("binary_name") , 
-                        partial_sha256 = query.get("sha_256_hash"), 
-                        tags = query.get("tags"), 
-                        model_name = query.get("model_name"))
-                    if not len(api_response.data.results):
-                        break
-                    for item in api_response.data.results:
-                        log_info(f"RevEng.AI | Item: {item}")
-                        item = {
-                            "name": item.binary_name,
-                            "icon": "file.png",
-                            "type": "Binary",
-                            "date": item.created_at.strftime("%m/%d/%Y %H:%M"),
-                            "model_name": item.model_name,
-                            "owner": item.owned_by,
-                            "id": item.binary_id
-                        }
-                        output.append(item)
-                    page += 1
-            
-
-            return output
-
-        except Exception as e:
-            log_error("Getting collections failed. Reason: %s", str(e))
-            return False, str(e)
-
-    
     # Fetch Data Types Process Functions
     def _process_data_type_batch(self, chunk: List[Dict], chunk_index: int) -> List[Dict]:
         try:
@@ -289,8 +181,6 @@ class MatchFeature:
                 with self.config.create_api_client() as api_client:
                     api_instance = revengai.FunctionsDataTypesApi(api_client)
                     api_response = api_instance.list_function_data_types_for_functions(function_ids=function_ids).to_dict()
-                    log_info("The response of FunctionsDataTypesApi->list_function_data_types_for_functions:\n")
-                    log_info(api_response)
 
                 data = api_response.get("data", {})
                 items = data.get("items", [])
@@ -301,10 +191,8 @@ class MatchFeature:
                 time.sleep(3)
 
             for item in items:
-                log_info(f"RevEng.AI | Cancelled: {self.cancelled.is_set()}")
                 if self.cancelled.is_set():
                     return []
-                log_info(f"RevEng.AI | Item: {item['function_id']}")
                 if item['status'] != "completed":
                     continue
                 for result in chunk:
@@ -313,7 +201,6 @@ class MatchFeature:
                         item2 = item.get("data_types", {})
                         func_types = item2.get("func_types", None)
                         func_deps = item2.get("func_deps", [])
-                        log_info(f"RevEng.AI | Func types: {func_types}")
                         if func_types is not None:
                             fnc: Function = _art_from_dict(func_types)
                             if fnc.name is None:
