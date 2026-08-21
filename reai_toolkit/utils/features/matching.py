@@ -2,8 +2,8 @@ from binaryninja import BinaryView, log_info, log_error
 from typing import List, Dict, Tuple, Any
 import revengai
 import re
-import time
-from libbs.artifacts import _art_from_dict, Function, FunctionArgument
+from libbs.artifacts import Function, FunctionArgument
+from .datatypes import build_signature_data
 from threading import Event
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -160,67 +160,52 @@ class MatchFeature:
     def _process_data_type_batch(self, chunk: List[Dict], chunk_index: int) -> List[Dict]:
         try:
             log_info(f"RevEng.AI | Processing chunk of {len(chunk)} functions")
-            function_ids = set([result['nearest_neighbor_id'] for result in chunk])
+            function_ids = [result['nearest_neighbor_id'] for result in chunk]
             log_info(f"RevEng.AI | Cancelled: {self.cancelled.is_set()}")
             if self.cancelled.is_set():
                 return []
 
             with self.config.create_api_client() as api_client:
-                api_instance = revengai.FunctionsDataTypesApi(api_client)
-                function_data_types_params = revengai.FunctionDataTypesParams.from_dict({"function_ids": function_ids}) 
-                api_response = api_instance.generate_function_data_types_for_functions(function_data_types_params)
-            
+                api_instance = revengai.DataTypesApi(api_client)
+                api_response = api_instance.v3_list_function_signatures(
+                    function_ids=function_ids,
+                    include_data_types=True,
+                ).to_dict()
+
             log_info(f"RevEng.AI | Cancelled: {self.cancelled.is_set()}")
             if self.cancelled.is_set():
                 return []
+
+            data_types = {}
+            for group in api_response.get("data_types") or []:
+                for entry in group.get("items") or []:
+                    data_types[str(entry["data_type_id"])] = entry
+
             signatures = []
-            items = []
-            while True:
+            for item in api_response.get("items") or []:
                 if self.cancelled.is_set():
                     return []
-                with self.config.create_api_client() as api_client:
-                    api_instance = revengai.FunctionsDataTypesApi(api_client)
-                    api_response = api_instance.list_function_data_types_for_functions(function_ids=function_ids).to_dict()
-
-                data = api_response.get("data", {})
-                items = data.get("items", [])
-                pending_count = sum(1 for item in items if item.get("status") == "pending")
-                log_info(f"RevEng.AI | [Chunk {chunk_index}] {pending_count} items still pending...")
-                if not pending_count:
-                    break
-                time.sleep(3)
-
-            for item in items:
-                if self.cancelled.is_set():
-                    return []
-                if item['status'] != "completed":
+                signature_data = build_signature_data(item, data_types)
+                if signature_data is None:
                     continue
                 for result in chunk:
                     if result['nearest_neighbor_id'] == item['function_id']:
-                        signature = "N/A"
-                        item2 = item.get("data_types", {})
-                        func_types = item2.get("func_types", None)
-                        func_deps = item2.get("func_deps", [])
-                        if func_types is not None:
-                            fnc: Function = _art_from_dict(func_types)
-                            if fnc.name is None:
-                                log_info(f"Function {item['function_id']} has no name, skipping signature application.")
-                                continue
-                            log_info(f"Applying signature for {fnc.name}")
-                            signature = self.function_to_str(fnc)
-                            if signature != "N/A":
-                                signatures.append({"nearest_neighbor_id": result['nearest_neighbor_id'], "signature": signature, "data_types": item['data_types'], "signature_data": {"deps": func_deps, "function": fnc}})
+                        fnc: Function = signature_data["function"]
+                        log_info(f"Applying signature for {fnc.name}")
+                        signature = self.function_to_str(fnc)
+                        signatures.append({
+                            "nearest_neighbor_id": result['nearest_neighbor_id'],
+                            "signature": signature,
+                            "data_types": data_types,
+                            "signature_data": signature_data,
+                        })
                         break
-
-            #log_info(f"RevEng.AI | Total count: {total_count}")
-            #log_info(f"RevEng.AI | Total data types: {total_data_types}")
-            #log_info(f"RevEng.AI | Items: {items}")
 
             return signatures
         except Exception as e:
             log_error(f"RevEng.AI | Error processing data type batch: {str(e)}")
             return []
-        
+
     def function_arguments(self, fnc: Function) -> list[str]:
         args = []
         for k in fnc.header.args:
@@ -234,23 +219,6 @@ class MatchFeature:
         # convert the signature to a string representation
         return f"{fnc.type} {fnc.name}"\
             f"({', '.join(self.function_arguments(fnc))})"
-    
-    def make_signature(self, data_types: List[Dict]) -> str:
-        try:
-            #log_info(f"RevEng.AI | Making signature for {data_types}")
-            signature = "("
-            for _, arg in data_types['func_types'].get('header', {}).get('args', {}).items():
-                #log_info(f"RevEng.AI | Arg: {arg}")
-                signature += f"{arg.get('type', 'N/A')}, "
-            signature = signature[:-2] if signature.endswith(", ") else signature
-
-            signature += f") {data_types['func_types'].get('type', 'N/A')}"
-
-            log_info(f"RevEng.AI | Signature: {signature}")
-            return signature
-        except Exception as e:
-            log_error(f"RevEng.AI | Error making signature: {str(e)}")
-            return "N/A"
 
     def fetch_data_types(self, bv: BinaryView, selected_results: List[Dict]) -> Tuple[bool, Dict[str, Any]]:
         try:

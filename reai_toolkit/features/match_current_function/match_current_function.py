@@ -60,9 +60,9 @@ class MatchCurrentFunction(MatchFeature):
                 return False, "Operation cancelled"
 
             with self.config.create_api_client() as api_client:
-                analysis_core_instance = revengai.AnalysesResultsMetadataApi(api_client)
-                analyzed_functions = analysis_core_instance.get_functions_list(analysis_id)
-                analyzed_functions = analyzed_functions.to_dict()["data"]["functions"]
+                functions_core_instance = revengai.FunctionsCoreApi(api_client)
+                analyzed_functions = functions_core_instance.list_analysis_functions(analysis_id=analysis_id)
+                analyzed_functions = analyzed_functions.to_dict()["functions"]
             if self.cancelled.is_set():
                 return False, "Operation cancelled"
 

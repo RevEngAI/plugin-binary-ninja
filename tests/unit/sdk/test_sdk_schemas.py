@@ -3,10 +3,8 @@ from importlib.metadata import version
 
 import pytest
 import revengai
+from revengai.models.analysis_function_entry import AnalysisFunctionEntry
 from revengai.models.analysis_function_mapping import AnalysisFunctionMapping
-from revengai.models.app_api_rest_v2_functions_types_function import (
-    AppApiRestV2FunctionsTypesFunction,
-)
 from revengai.models.basic import Basic
 from revengai.models.binary_search_result import BinarySearchResult
 from revengai.models.comments_data import CommentsData
@@ -16,12 +14,13 @@ from revengai.models.function_mapping import FunctionMapping
 from revengai.models.function_match import FunctionMatch
 from revengai.models.inline_comment import InlineComment
 from revengai.models.matched_function import MatchedFunction
+from revengai.models.rename_input_body import RenameInputBody
 from revengai.models.status_output import StatusOutput
 from revengai.models.summary_data import SummaryData
 from revengai.models.task_status import TaskStatus
 from revengai.models.workflow_progress import WorkflowProgress
 
-PINNED = (3, 123, 0)
+PINNED = (4, 4, 0)
 
 API_METHODS = {
     "ConfigApi": ["get_config"],
@@ -38,17 +37,14 @@ API_METHODS = {
         "get_analysis_function_matches",
     ],
     "ModelsApi": ["get_models"],
-    "AnalysesResultsMetadataApi": ["get_functions_list"],
     "FunctionsCoreApi": [
+        "list_analysis_functions",
         "start_functions_matching",
         "get_functions_matching_status",
         "get_functions_matches",
     ],
-    "FunctionsRenamingHistoryApi": ["rename_function_id"],
-    "FunctionsDataTypesApi": [
-        "generate_function_data_types_for_functions",
-        "list_function_data_types_for_functions",
-    ],
+    "FunctionsRenamingHistoryApi": ["rename_function"],
+    "DataTypesApi": ["v3_list_function_signatures"],
     "FunctionsAIDecompilationApi": [
         "get_ai_decompilation_status",
         "create_ai_decompilation",
@@ -127,12 +123,26 @@ def test_upload_file_accepts_plugin_kwargs():
 
 
 def test_create_analysis_accepts_request_kwarg():
-    assert "analysis_create_request" in _params(revengai.AnalysesCoreApi.create_analysis)
+    assert "analysis_create_request" in _params(
+        revengai.AnalysesCoreApi.create_analysis
+    )
 
 
 def test_analysis_id_methods_accept_analysis_id():
-    for method in ("get_analysis_status", "get_analysis_basic_info", "get_analysis_function_map"):
+    for method in (
+        "get_analysis_status",
+        "get_analysis_basic_info",
+        "get_analysis_function_map",
+    ):
         assert "analysis_id" in _params(getattr(revengai.AnalysesCoreApi, method))
+
+
+def test_list_analysis_functions_accepts_analysis_id():
+    assert "analysis_id" in _params(revengai.FunctionsCoreApi.list_analysis_functions)
+
+
+def test_list_analysis_functions_output_has_no_envelope():
+    assert {"functions"} <= set(revengai.ListAnalysisFunctionsOutputBody.model_fields)
 
 
 def test_start_functions_matching_accepts_request_kwargs():
@@ -151,13 +161,16 @@ def test_start_analysis_function_matching_accepts_request_kwargs():
 
 
 def test_analysis_matching_status_and_results_accept_analysis_id():
-    for method in ("get_analysis_function_matching_status", "get_analysis_function_matches"):
+    for method in (
+        "get_analysis_function_matching_status",
+        "get_analysis_function_matches",
+    ):
         assert "analysis_id" in _params(getattr(revengai.AnalysesCoreApi, method))
 
 
-def test_rename_function_id_accepts_kwargs():
-    params = _params(revengai.FunctionsRenamingHistoryApi.rename_function_id)
-    assert {"function_id", "function_rename"} <= params
+def test_rename_function_accepts_kwargs():
+    params = _params(revengai.FunctionsRenamingHistoryApi.rename_function)
+    assert {"function_id", "rename_input_body"} <= params
 
 
 def test_ai_decompilation_methods_accept_function_id():
@@ -168,7 +181,9 @@ def test_ai_decompilation_methods_accept_function_id():
         "get_ai_decompilation_summary",
         "get_ai_decompilation_inline_comments",
     ):
-        assert "function_id" in _params(getattr(revengai.FunctionsAIDecompilationApi, method))
+        assert "function_id" in _params(
+            getattr(revengai.FunctionsAIDecompilationApi, method)
+        )
 
 
 def test_analysis_create_request_has_plugin_fields():
@@ -188,8 +203,8 @@ def test_match_filters_has_plugin_fields():
     )
 
 
-def test_function_rename_has_plugin_fields():
-    assert {"new_name", "new_mangled_name"} <= set(revengai.FunctionRename.model_fields)
+def test_rename_input_body_has_plugin_fields():
+    assert {"new_name", "new_mangled_name"} <= set(RenameInputBody.model_fields)
 
 
 def test_tag_has_name_field():
@@ -241,7 +256,7 @@ def test_function_mapping_has_plugin_fields():
 
 def test_analysis_functions_item_has_plugin_fields():
     assert {"function_id", "function_vaddr", "function_name"} <= set(
-        AppApiRestV2FunctionsTypesFunction.model_fields
+        AnalysisFunctionEntry.model_fields
     )
 
 
@@ -343,3 +358,40 @@ def test_match_current_function_request_shape_is_honored():
     assert payload["function_ids"] == [42]
     assert payload["filters"]["collection_ids"] == [1]
     assert payload["filters"]["binary_ids"] == [2]
+
+
+def test_v3_list_function_signatures_accepts_plugin_kwargs():
+    assert {"function_ids", "include_data_types"} <= _params(
+        revengai.DataTypesApi.v3_list_function_signatures
+    )
+
+
+def test_batch_function_signature_entry_has_plugin_fields():
+    from revengai.models.batch_function_signature_entry import (
+        BatchFunctionSignatureEntry,
+    )
+
+    assert {
+        "function_id",
+        "function_name",
+        "has_signature",
+        "calling_convention",
+        "parameters",
+        "return_data_type_id",
+        "source_function_id",
+        "source_type",
+    } <= set(BatchFunctionSignatureEntry.model_fields)
+
+
+def test_list_function_signatures_output_has_items_and_data_types_catalogue():
+    from revengai.models.list_function_signatures_output_body import (
+        ListFunctionSignaturesOutputBody,
+    )
+
+    assert {"items", "data_types"} <= set(ListFunctionSignaturesOutputBody.model_fields)
+
+
+def test_analysis_data_types_group_has_analysis_id_and_items():
+    from revengai.models.analysis_data_types_group import AnalysisDataTypesGroup
+
+    assert {"analysis_id", "items"} <= set(AnalysisDataTypesGroup.model_fields)
