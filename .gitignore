@@ -55,3 +55,7 @@ Thumbs.db
 reai_toolkit/vendor/
 reai_toolkit/vendor/*
 plugin_binary_ninja.egg-info/*
+
+.dev-sdk/
+# Written by `npx @openapitools/openapi-generator-cli version-manager set`.
+openapitools.json

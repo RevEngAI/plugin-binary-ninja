@@ -27,9 +27,9 @@ class ViewFunctionInPortal:
                 raise Exception("Analysis not found. Please choose one using the 'Attach to existing' feature.")
 
             with self.config.create_api_client() as api_client:
-                api_instance = revengai.AnalysesResultsMetadataApi(api_client)
-                api_response = api_instance.get_functions_list(analysis_id)
-                analyzed_functions = api_response.data.functions
+                api_instance = revengai.FunctionsCoreApi(api_client)
+                api_response = api_instance.list_analysis_functions(analysis_id=analysis_id)
+                analyzed_functions = api_response.functions
                 log_info(f"RevEng.AI | Analyzed functions: {analyzed_functions}")
 
             analyzed_function = next((f for f in analyzed_functions if f.function_vaddr == function.start), None)

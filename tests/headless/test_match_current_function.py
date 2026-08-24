@@ -18,21 +18,6 @@ def test_match_current_function_pipeline(bv, mocker):
     feature = mcf_mod.MatchCurrentFunction(config)
     mocker.patch.object(mcf_mod.time, "sleep")
 
-    meta_api = mocker.patch.object(
-        mcf_mod.revengai, "AnalysesResultsMetadataApi"
-    ).return_value
-    meta_api.get_functions_list.return_value.to_dict.return_value = {
-        "data": {
-            "functions": [
-                {
-                    "function_id": 100,
-                    "function_vaddr": func.start,
-                    "function_name": func.name,
-                }
-            ]
-        }
-    }
-
     matched = MagicMock()
     matched.function_name = "match_name"
     matched.mangled_name = "_Z10match_namev"
@@ -45,6 +30,15 @@ def test_match_current_function_pipeline(bv, mocker):
     by_distance.function_id = 100
     by_distance.matched_functions = [matched]
     core_api = mocker.patch.object(mcf_mod.revengai, "FunctionsCoreApi").return_value
+    core_api.list_analysis_functions.return_value.to_dict.return_value = {
+        "functions": [
+            {
+                "function_id": 100,
+                "function_vaddr": func.start,
+                "function_name": func.name,
+            }
+        ]
+    }
     core_api.get_functions_matching_status.return_value = MagicMock(
         status="COMPLETED", step_index=1, steps_total=1
     )

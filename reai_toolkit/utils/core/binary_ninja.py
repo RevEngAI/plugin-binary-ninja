@@ -10,9 +10,9 @@ def _rename_in_portal(config: revengai.Configuration, function_id:int, new_name:
     try:
         with config.create_api_client() as api_client:
             api_instance = revengai.FunctionsRenamingHistoryApi(api_client)
-            api_instance.rename_function_id(
+            api_instance.rename_function(
                 function_id=function_id,
-                function_rename=revengai.FunctionRename(
+                rename_input_body=revengai.RenameInputBody(
                     new_name=new_name,
                     new_mangled_name=new_mangled_name
                 )
@@ -53,7 +53,7 @@ def parse_date(date_str: str) -> str:
     try:
         dt = datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%S.%f")
         return dt.strftime("%Y-%m-%d %H:%M:%S")
-    except Exception as e:
+    except Exception:
         return date_str
 
 def get_function_by_addr(bv: BinaryView, addr: int) -> Function:
@@ -72,10 +72,10 @@ def get_function_by_addr(bv: BinaryView, addr: int) -> Function:
 
 def get_function_id_by_addr(bv: BinaryView, addr: int, config):
     with config.create_api_client() as api_client:
-        api_instance = revengai.AnalysesResultsMetadataApi(api_client)
+        api_instance = revengai.FunctionsCoreApi(api_client)
         analysis_id = config.get_analysis_id(bv)
-        api_response = api_instance.get_functions_list(analysis_id)
-        analyzed_functions = api_response.data.functions
+        api_response = api_instance.list_analysis_functions(analysis_id=analysis_id)
+        analyzed_functions = api_response.functions
         target_function = next((f for f in analyzed_functions if f.function_vaddr == addr), None)
         if not target_function:
             log_error(f"RevEng.AI | Function not found at 0x{addr:x}")

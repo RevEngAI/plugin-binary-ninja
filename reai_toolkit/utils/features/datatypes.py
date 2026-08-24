@@ -1,7 +1,7 @@
-from libbs.artifacts import _art_from_dict, Function, GlobalVariable, Enum, Struct, Typedef
+from libbs.artifacts import _art_from_dict, Function, FunctionArgument, FunctionHeader, GlobalVariable, Enum, Struct, Typedef
 from libbs.api import DecompilerInterface
 from binaryninja import log_error, log_info
-from typing import List   
+from typing import List
 
 def apply_type(deci: DecompilerInterface, artifact, soft_skip=False) -> None | str:
         supported_types = [
@@ -116,3 +116,121 @@ def apply_data_types(function_addr: int = 0, signature=None, deci: DecompilerInt
 
         except Exception as e:
             log_info(f"RevEng.AI | Error in _apply_data_types: {e}")
+
+
+def _resolve_struct_dep(entry: dict, data_types: dict, deps_by_name: dict) -> None:
+    name = entry.get("name")
+    if name is None or name in deps_by_name:
+        return
+
+    # Registered before its members are resolved so a self-referential struct (e.g. a member
+    # pointing back to its own type) terminates instead of recursing forever.
+    deps_by_name[name] = {
+        "artifact_type": "Struct",
+        "name": name,
+        "size": entry.get("size"),
+        "members": {},
+    }
+
+    members = {}
+    for member in (entry.get("definition") or {}).get("members") or []:
+        member_type, _ = _resolve_type(
+            member.get("data_type_id"), data_types, deps_by_name
+        )
+        members[hex(member["offset"])] = {
+            "name": member.get("name"),
+            "offset": member["offset"],
+            "type": member_type,
+            "size": member.get("size"),
+        }
+    deps_by_name[name]["members"] = members
+
+
+def _resolve_enum_dep(entry: dict, deps_by_name: dict) -> None:
+    name = entry.get("name")
+    if name is None or name in deps_by_name:
+        return
+
+    deps_by_name[name] = {
+        "artifact_type": "Enum",
+        "name": name,
+        "members": {
+            value["name"]: int(value["value"])
+            for value in (entry.get("definition") or {}).get("values") or []
+        },
+    }
+
+
+def _resolve_typedef_dep(entry: dict, data_types: dict, deps_by_name: dict) -> None:
+    name = entry.get("name")
+    if name is None or name in deps_by_name:
+        return
+
+    deps_by_name[name] = {"artifact_type": "Typedef", "name": name, "type": None}
+    base_type, _ = _resolve_type(
+        (entry.get("definition") or {}).get("target_data_type_id"),
+        data_types,
+        deps_by_name,
+    )
+    deps_by_name[name]["type"] = base_type
+
+
+def _resolve_type(data_type_id, data_types: dict, deps_by_name: dict) -> tuple:
+    """Resolve a v3 data_type_id to its type name and size, registering any Struct/Enum/Typedef
+    it (or a type it references) names as a dependency in deps_by_name."""
+    if data_type_id is None:
+        return None, None
+
+    entry = data_types.get(str(data_type_id))
+    if entry is None:
+        return None, None
+
+    kind = entry.get("kind")
+    definition = entry.get("definition") or {}
+    if kind in ("STRUCT", "UNION"):
+        _resolve_struct_dep(entry, data_types, deps_by_name)
+    elif kind == "ENUM":
+        _resolve_enum_dep(entry, deps_by_name)
+    elif kind == "TYPEDEF":
+        _resolve_typedef_dep(entry, data_types, deps_by_name)
+    elif kind == "POINTER":
+        _resolve_type(definition.get("pointee_data_type_id"), data_types, deps_by_name)
+    elif kind == "ARRAY":
+        _resolve_type(definition.get("element_data_type_id"), data_types, deps_by_name)
+
+    return entry.get("name"), entry.get("size")
+
+
+def build_signature_data(signature: dict, data_types: dict) -> dict | None:
+    """Convert a v3 BatchFunctionSignatureEntry into the libbs artifact graph apply_data_types
+    applies. Returns None when the analysis holds no signature for this function."""
+    if not signature.get("has_signature"):
+        return None
+
+    deps_by_name: dict = {}
+
+    args = {}
+    for parameter in signature.get("parameters") or []:
+        arg_type, arg_size = _resolve_type(
+            parameter.get("data_type_id"), data_types, deps_by_name
+        )
+        args[parameter["ordinal"]] = FunctionArgument(
+            offset=parameter["ordinal"],
+            name=parameter.get("name"),
+            type_=arg_type,
+            size=arg_size,
+        )
+
+    return_type, _ = _resolve_type(
+        signature.get("return_data_type_id"), data_types, deps_by_name
+    )
+
+    function = Function(
+        header=FunctionHeader(
+            name=signature.get("function_name"),
+            type_=return_type,
+            args=args,
+        )
+    )
+
+    return {"function": function, "deps": list(deps_by_name.values())}
