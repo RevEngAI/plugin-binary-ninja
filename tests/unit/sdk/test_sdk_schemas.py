@@ -223,6 +223,12 @@ def test_task_status_covers_plugin_state_machine():
     assert {"UNINITIALISED", "COMPLETED", "FAILED"} <= set(TaskStatus.__members__)
 
 
+def test_status_input_covers_analysis_state_machine():
+    assert {"UPLOADED", "QUEUED", "PROCESSING", "COMPLETE", "ERROR"} <= set(
+        revengai.StatusInput.__members__
+    )
+
+
 def test_binary_search_result_has_plugin_fields():
     assert {
         "binary_id",
