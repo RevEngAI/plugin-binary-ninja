@@ -45,9 +45,9 @@ class ChooseSource:
             sha256 = get_sha256(bv.file.filename)
 
             with self.config.create_api_client() as api_client:
-                api_instance = revengai.SearchApi(api_client)
-                api_response = api_instance.search_binaries(partial_sha256 = sha256, user_files_only = True)
-                results = api_response.data.results
+                api_instance = revengai.BinariesApi(api_client)
+                api_response = api_instance.v3_search_binaries(partial_sha256 = sha256, user_files_only = True)
+                results = api_response.results or []
             if not len(results):
                 raise Exception("Binary not found in RevEng.AI, try processing the binary again.")
             

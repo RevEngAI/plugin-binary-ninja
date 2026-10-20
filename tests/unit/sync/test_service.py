@@ -52,7 +52,7 @@ def test_fetch_basic_and_rebase_rebases_on_delta(mocker):
     service = sync_mod.AnalysisSyncService(MagicMock())
     mocker.patch.object(sync_mod, "ApiClient")
     api = mocker.patch.object(sync_mod, "AnalysesCoreApi").return_value
-    api.get_analysis_basic_info.return_value.data.base_address = 0x400000
+    api.get_analysis_basic_info_0.return_value.base_address = 0x400000
     bv = MagicMock()
     bv.start = 0x0
 
@@ -65,10 +65,21 @@ def test_fetch_basic_and_rebase_noop_when_aligned(mocker):
     service = sync_mod.AnalysisSyncService(MagicMock())
     mocker.patch.object(sync_mod, "ApiClient")
     api = mocker.patch.object(sync_mod, "AnalysesCoreApi").return_value
-    api.get_analysis_basic_info.return_value.data.base_address = 0x400000
+    api.get_analysis_basic_info_0.return_value.base_address = 0x400000
     bv = MagicMock()
     bv.start = 0x400000
 
     service._fetch_basic_and_rebase(bv, analysis_id=7)
 
     bv.rebase.assert_not_called()
+
+
+def test_fetch_function_map_uses_v3_endpoint(mocker):
+    service = sync_mod.AnalysisSyncService(MagicMock())
+    mocker.patch.object(sync_mod, "ApiClient")
+    api = mocker.patch.object(sync_mod, "FunctionsCoreApi").return_value
+
+    func_map = service._fetch_function_map(analysis_id=7)
+
+    api.v3_get_analysis_func_maps.assert_called_once_with(analysis_id=7)
+    assert func_map is api.v3_get_analysis_func_maps.return_value

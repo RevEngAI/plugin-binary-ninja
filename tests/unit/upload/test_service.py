@@ -13,13 +13,23 @@ def uploader():
 
 
 def test_get_models_returns_models(uploader, mocker):
-    api = mocker.patch.object(upload_mod.revengai, "ModelsApi").return_value
-    api.get_models.return_value.data.models = ["binnet-0.5", "binnet-0.4"]
+    api = mocker.patch.object(upload_mod.revengai, "ConfigApi").return_value
+    api.v3_get_models.return_value.models = ["binnet-0.5", "binnet-0.4"]
 
     ok, models = uploader.get_models(MagicMock())
 
     assert ok is True
     assert models == ["binnet-0.5", "binnet-0.4"]
+
+
+def test_get_models_handles_missing_models(uploader, mocker):
+    api = mocker.patch.object(upload_mod.revengai, "ConfigApi").return_value
+    api.v3_get_models.return_value.models = None
+
+    ok, models = uploader.get_models(MagicMock())
+
+    assert ok is True
+    assert models == []
 
 
 def test_upload_file_returns_sha_and_forwards_args(uploader, mocker, tmp_path):
@@ -69,3 +79,33 @@ def test_get_user_tier_surfaces_failure(uploader, mocker):
 
     assert ok is False
     assert tier is None
+
+
+def test_upload_binary_returns_a_tuple_when_the_upload_fails(mocker):
+    """upload_binary's caller unpacks two values. Returning a bare False on the
+    failure paths raised "cannot unpack non-iterable bool object" and masked the
+    real upload error."""
+    uploader = upload_mod.BinaryUploader(MagicMock())
+    mocker.patch.object(uploader, "upload_file", return_value=(False, "403 Forbidden"))
+    bv = MagicMock()
+    bv.file.filename = "/tmp/sample.bin"
+    bv.parent_view.length = 1024
+    mocker.patch.object(upload_mod.Path, "read_bytes", return_value=b"\x00")
+
+    ok, message = uploader.upload_binary(bv, {"debug_info": None, "tags": [], "is_private": True})
+
+    assert ok is False
+    assert message == "403 Forbidden"
+
+
+def test_upload_binary_returns_a_tuple_when_the_file_is_too_large(mocker):
+    uploader = upload_mod.BinaryUploader(MagicMock())
+    bv = MagicMock()
+    bv.file.filename = "/tmp/big.bin"
+    bv.parent_view.length = 11 * 1024 ** 2
+    mocker.patch.object(upload_mod.Path, "read_bytes", return_value=b"\x00")
+
+    ok, message = uploader.upload_binary(bv, {"debug_info": None, "tags": [], "is_private": True})
+
+    assert ok is False
+    assert "too large" in message

@@ -3,42 +3,39 @@ from importlib.metadata import version
 
 import pytest
 import revengai
+from revengai.models.analysis_basic_info_output_body import AnalysisBasicInfoOutputBody
 from revengai.models.analysis_function_entry import AnalysisFunctionEntry
-from revengai.models.analysis_function_mapping import AnalysisFunctionMapping
-from revengai.models.basic import Basic
-from revengai.models.binary_search_result import BinarySearchResult
+from revengai.models.binary_search_result_body import BinarySearchResultBody
 from revengai.models.comments_data import CommentsData
 from revengai.models.create_ai_decomp_output_body import CreateAIDecompOutputBody
 from revengai.models.decompilation_data import DecompilationData
-from revengai.models.function_mapping import FunctionMapping
 from revengai.models.function_match import FunctionMatch
+from revengai.models.get_function_maps_output_body import GetFunctionMapsOutputBody
 from revengai.models.inline_comment import InlineComment
 from revengai.models.matched_function import MatchedFunction
 from revengai.models.rename_input_body import RenameInputBody
-from revengai.models.status_output import StatusOutput
 from revengai.models.summary_data import SummaryData
 from revengai.models.task_status import TaskStatus
 from revengai.models.workflow_progress import WorkflowProgress
 
-PINNED = (4, 4, 0)
+PINNED = (4, 72, 2)
 
 API_METHODS = {
-    "ConfigApi": ["get_config"],
-    "SearchApi": ["search_binaries"],
+    "ConfigApi": ["v3_get_config", "v3_get_models"],
+    "BinariesApi": ["v3_search_binaries"],
     "CollectionsApi": ["v3_list_collections"],
     "AnalysesCoreApi": [
-        "upload_file",
         "create_analysis",
-        "get_analysis_status",
-        "get_analysis_basic_info",
-        "get_analysis_function_map",
+        "upload_file",
+        "v3_get_analysis_operation",
+        "get_analysis_basic_info_0",
         "start_analysis_function_matching",
         "get_analysis_function_matching_status",
         "get_analysis_function_matches",
     ],
-    "ModelsApi": ["get_models"],
     "FunctionsCoreApi": [
         "list_analysis_functions",
+        "v3_get_analysis_func_maps",
         "start_functions_matching",
         "get_functions_matching_status",
         "get_functions_matches",
@@ -90,9 +87,13 @@ def test_search_binaries_accepts_plugin_kwargs():
         "partial_name",
         "tags",
         "model_name",
-        "page",
-        "page_size",
-    } <= _params(revengai.SearchApi.search_binaries)
+        "limit",
+        "offset",
+    } <= _params(revengai.BinariesApi.v3_search_binaries)
+
+
+def test_search_binaries_output_has_no_envelope():
+    assert {"results"} <= set(revengai.SearchBinariesOutputBody.model_fields)
 
 
 def test_v3_list_collections_accepts_plugin_kwargs():
@@ -122,6 +123,18 @@ def test_upload_file_accepts_plugin_kwargs():
     )
 
 
+def test_upload_still_uses_the_v2_envelope():
+    """Upload stays on POST /v2/upload. The v3 endpoint is rejected with a 403
+    from the load balancer in production -- a status /v3/upload does not even
+    declare -- so the deprecated-but-working v2 path is kept deliberately."""
+    assert "data" in revengai.BaseResponseUploadResponse.model_fields
+    assert "sha_256_hash" in revengai.UploadResponse.model_fields
+
+
+def test_get_models_output_has_no_envelope():
+    assert "models" in revengai.GetModelsOutputBody.model_fields
+
+
 def test_create_analysis_accepts_request_kwarg():
     assert "analysis_create_request" in _params(
         revengai.AnalysesCoreApi.create_analysis
@@ -129,12 +142,11 @@ def test_create_analysis_accepts_request_kwarg():
 
 
 def test_analysis_id_methods_accept_analysis_id():
-    for method in (
-        "get_analysis_status",
-        "get_analysis_basic_info",
-        "get_analysis_function_map",
-    ):
+    for method in ("v3_get_analysis_operation", "get_analysis_basic_info_0"):
         assert "analysis_id" in _params(getattr(revengai.AnalysesCoreApi, method))
+    assert "analysis_id" in _params(
+        revengai.FunctionsCoreApi.v3_get_analysis_func_maps
+    )
 
 
 def test_list_analysis_functions_accepts_analysis_id():
@@ -239,24 +251,27 @@ def test_binary_search_result_has_plugin_fields():
         "model_name",
         "owned_by",
         "created_at",
-    } <= set(BinarySearchResult.model_fields)
+    } <= set(BinarySearchResultBody.model_fields)
 
 
-def test_status_output_exposes_analysis_status():
-    assert "analysis_status" in StatusOutput.model_fields
+def test_analysis_operation_exposes_create_metadata():
+    assert {"done", "error", "metadata", "name", "response"} <= set(
+        revengai.OperationCreateMetadataCreateResult.model_fields
+    )
+    assert {"analysis_id", "binary_id", "status"} <= set(
+        revengai.CreateMetadata.model_fields
+    )
 
 
-def test_basic_exposes_base_address_and_model_id():
-    assert {"base_address", "model_id"} <= set(Basic.model_fields)
+def test_analysis_basic_info_has_plugin_fields():
+    assert {"base_address", "model_id", "binary_id", "binary_name"} <= set(
+        AnalysisBasicInfoOutputBody.model_fields
+    )
 
 
-def test_analysis_function_mapping_exposes_function_maps():
-    assert "function_maps" in AnalysisFunctionMapping.model_fields
-
-
-def test_function_mapping_has_plugin_fields():
+def test_function_maps_output_has_plugin_fields():
     assert {"function_map", "inverse_function_map", "name_map"} <= set(
-        FunctionMapping.model_fields
+        GetFunctionMapsOutputBody.model_fields
     )
 
 
