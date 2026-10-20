@@ -42,8 +42,9 @@ class PeriodicChecker(QObject):
             try:
                 with self.config.create_api_client() as api_client:
                     api_instance = revengai.AnalysesCoreApi(api_client)
-                    api_response = api_instance.get_analysis_status(aid)
-                    status = api_response.data.analysis_status
+                    api_response = api_instance.v3_get_analysis_operation(aid)
+                    metadata = api_response.metadata
+                    status = metadata.status if metadata else None
                     log_info(
                         f"RevEng.AI | Current status for analysis [Binary ID: {bid}] [Analysis ID: {aid}]: {status}"
                     )
@@ -61,12 +62,12 @@ class PeriodicChecker(QObject):
                     # Analysis is complete, fetch model_id and invoke callback
                     with self.config.create_api_client() as api_client:
                         api_instance = revengai.AnalysesCoreApi(api_client)
-                        analysis_details: revengai.BaseResponseBasic = (
-                            api_instance.get_analysis_basic_info(
+                        analysis_details: revengai.AnalysisBasicInfoOutputBody = (
+                            api_instance.get_analysis_basic_info_0(
                                 analysis_id=analysis_id
                             )
                         )
-                        model_id = analysis_details.data.model_id
+                        model_id = analysis_details.model_id
                         callback(bid, aid, model_id)
 
                         bv = self.sync_service.sync_analysis_data(

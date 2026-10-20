@@ -45,17 +45,50 @@ def config(mocker, settings):
 
 def test_check_auth_true_when_get_config_succeeds(config, mocker):
     api = mocker.patch.object(config_mod.revengai, "ConfigApi").return_value
-    api.get_config.return_value = MagicMock()
+    api.v3_get_config.return_value = MagicMock()
 
     assert config.check_auth() is True
-    api.get_config.assert_called_once()
+    api.v3_get_config.assert_called_once()
 
 
 def test_check_auth_false_when_get_config_raises(config, mocker):
     api = mocker.patch.object(config_mod.revengai, "ConfigApi").return_value
-    api.get_config.side_effect = Exception("401 unauthorized")
+    api.v3_get_config.side_effect = Exception("401 unauthorized")
 
     assert config.check_auth() is False
+
+
+def test_init_config_uses_v3_binary_search(config, mocker):
+    mocker.patch.object(config_mod, "get_sha256", return_value="deadbeef")
+    mocker.patch.object(config, "check_auth", return_value=True)
+    sync = mocker.patch.object(config_mod, "AnalysisSyncService")
+    api = mocker.patch.object(config_mod.revengai, "BinariesApi").return_value
+    api.v3_search_binaries.return_value = MagicMock(
+        results=[MagicMock(binary_id=11, analysis_id=22, model_id=33)]
+    )
+    config.api_key = "key"
+
+    ok, _ = config.init_config(MagicMock())
+
+    assert ok is True
+    api.v3_search_binaries.assert_called_once_with(
+        partial_sha256="deadbeef", user_files_only=True
+    )
+    assert (config.binary_id, config.analysis_id, config.model_id) == (11, 22, 33)
+    sync.return_value.sync_analysis_data.assert_called_once()
+
+
+def test_init_config_raises_when_v3_search_returns_no_results(config, mocker):
+    mocker.patch.object(config_mod, "get_sha256", return_value="deadbeef")
+    mocker.patch.object(config, "check_auth", return_value=True)
+    api = mocker.patch.object(config_mod.revengai, "BinariesApi").return_value
+    api.v3_search_binaries.return_value = MagicMock(results=[])
+    config.api_key = "key"
+
+    ok, message = config.init_config(MagicMock())
+
+    assert ok is False
+    assert "not found" in message
 
 
 def test_set_current_info_round_trips_through_settings(config):

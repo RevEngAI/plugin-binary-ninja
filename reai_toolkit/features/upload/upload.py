@@ -31,9 +31,9 @@ class BinaryUploader:
     def get_models(self, bv: BinaryView):
         try:
             with self.config.create_api_client() as api_client:
-                api_instance = revengai.ModelsApi(api_client)
-                api_response = api_instance.get_models()
-                models = api_response.data.models
+                api_instance = revengai.ConfigApi(api_client)
+                api_response = api_instance.v3_get_models()
+                models = api_response.models or []
             log_info(f"RevEng.AI | Models: {models}")
             return True, models
         except Exception as e:
@@ -44,10 +44,10 @@ class BinaryUploader:
         try:
             file = Path(file_path).read_bytes()
             with self.config.create_api_client() as api_client:
-                api_instance = revengai.AnalysesCoreApi(api_client)
-                api_response = api_instance.upload_file(file_type, file, force_overwrite=True)
+                api_instance = revengai.BinariesApi(api_client)
+                api_response = api_instance.v3_upload_file(file, file_type.value, force_overwrite=True)
                 log_info(f"RevEng.AI | File uploaded successfully.")
-            return True, api_response.data.sha_256_hash
+            return True, api_response.sha_256_hash
         except Exception as e:
             log_error(f"RevEng.AI | Failed to upload file {file_path}: {str(e)}")
             return False, str(e)

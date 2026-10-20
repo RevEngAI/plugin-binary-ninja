@@ -1,3 +1,4 @@
+from datetime import datetime
 from unittest.mock import MagicMock
 
 import pytest
@@ -84,3 +85,46 @@ def test_match_functions_lists_analyzed_functions_via_list_analysis_functions(mo
     assert 42 in call.args or call.kwargs.get("analysis_id") == 42
     assert ok is True
     assert result["skipped"] == 0
+
+
+def test_search_binaries_uses_v3_binaries_endpoint(mocker):
+    config = MagicMock()
+
+    old_api = mocker.patch.object(revengai, "SearchApi").return_value
+    old_api.search_binaries.side_effect = AssertionError(
+        "binary search must go through BinariesApi.v3_search_binaries, not the "
+        "deprecated SearchApi.search_binaries"
+    )
+
+    created_at = datetime(2024, 5, 1, 12, 30)
+    binaries_api = mocker.patch.object(revengai, "BinariesApi").return_value
+    binaries_api.v3_search_binaries.return_value = MagicMock(
+        results=[
+            MagicMock(
+                binary_name="libc.so",
+                binary_id=11,
+                analysis_id=22,
+                sha_256_hash="abc",
+                owned_by="someone",
+                created_at=created_at,
+            )
+        ]
+    )
+
+    feature = mf_mod.MatchFunctions(config)
+    items = feature._search_binaries({"binary_name": "libc"})
+
+    call = binaries_api.v3_search_binaries.call_args
+    assert call.kwargs["limit"] == 20
+    assert call.kwargs["offset"] == 0
+    assert "page" not in call.kwargs and "page_size" not in call.kwargs
+    assert items == [
+        {
+            "name": "libc.so",
+            "binary_id": "11",
+            "analysis_id": "22",
+            "sha_256_hash": "abc",
+            "owner": "someone",
+            "date": created_at.strftime("%m/%d/%Y %H:%M"),
+        }
+    ]

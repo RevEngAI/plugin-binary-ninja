@@ -112,7 +112,7 @@ class Config:
             self.init_api_config()
             with self.create_api_client() as api_client:
                 api_instance = revengai.ConfigApi(api_client)
-                api_instance.get_config()
+                api_instance.v3_get_config()
                 log_info("RevEng.AI | User authenticated successfully.")
             return True
         except Exception as e:
@@ -172,14 +172,14 @@ class Config:
             else:
                 log_info(f"RevEng.AI | Binary not found in saved configurations, searching in RevEng.AI...")
                 with self.create_api_client() as api_client:
-                    api_instance = revengai.SearchApi(api_client)
-                    api_response = api_instance.search_binaries(partial_sha256 = self.sha256, user_files_only = True)
-                if not len(api_response.data.results):
+                    api_instance = revengai.BinariesApi(api_client)
+                    api_response = api_instance.v3_search_binaries(partial_sha256 = self.sha256, user_files_only = True)
+                if not len(api_response.results):
                     raise Exception("Binary not found in RevEng.AI, try processing the binary again.")
                 else:
-                    self.binary_id = api_response.data.results[0].binary_id
-                    self.analysis_id = api_response.data.results[0].analysis_id
-                    self.model_id = api_response.data.results[0].model_id
+                    self.binary_id = api_response.results[0].binary_id
+                    self.analysis_id = api_response.results[0].analysis_id
+                    self.model_id = api_response.results[0].model_id
                     bv = AnalysisSyncService(self).sync_analysis_data(analysis_id=self.analysis_id, bv=bv)
                     log_info(f"RevEng.AI | Binary found in RevEng.AI, binary_id: {self.binary_id}")
                     self.set_current_info(self.binary_id, self.analysis_id, self.model_id)

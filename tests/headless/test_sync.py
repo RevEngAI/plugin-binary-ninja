@@ -47,7 +47,7 @@ def test_rebase_returns_view_at_analysis_base(bv, mocker):
     mocker.patch.object(sync_mod, "ApiClient")
     api = mocker.patch.object(sync_mod, "AnalysesCoreApi").return_value
     target = bv.start + 0x100000
-    api.get_analysis_basic_info.return_value.data.base_address = target
+    api.get_analysis_basic_info_0.return_value.base_address = target
 
     rebased = service._fetch_basic_and_rebase(bv, analysis_id=1)
 
@@ -59,7 +59,7 @@ def test_rebase_skipped_when_already_aligned(bv, mocker):
     service = sync_mod.AnalysisSyncService(MagicMock())
     mocker.patch.object(sync_mod, "ApiClient")
     api = mocker.patch.object(sync_mod, "AnalysesCoreApi").return_value
-    api.get_analysis_basic_info.return_value.data.base_address = bv.start
+    api.get_analysis_basic_info_0.return_value.base_address = bv.start
 
     result = service._fetch_basic_and_rebase(bv, analysis_id=1)
 

@@ -131,17 +131,16 @@ class MatchFeature:
         try:
             log_info("RevEng.AI | Searching for binaries")
             with self.config.create_api_client() as api_client:
-                api_instance = revengai.SearchApi(api_client)
-                api_response = api_instance.search_binaries(
-                    page = 1, 
-                    page_size = 20, 
+                api_instance = revengai.BinariesApi(api_client)
+                api_response = api_instance.v3_search_binaries(
                     partial_name = query.get("binary_name") , 
                     partial_sha256 = query.get("sha_256_hash"), 
                     tags = query.get("tags"), 
-                    model_name = query.get("model_name")
-                    
+                    model_name = query.get("model_name"),
+                    limit = 20,
+                    offset = 0,
                 )
-                for binary in api_response.data.results:
+                for binary in api_response.results or []:
                     item = {
                         "name": binary.binary_name,
                         "binary_id": str(binary.binary_id),

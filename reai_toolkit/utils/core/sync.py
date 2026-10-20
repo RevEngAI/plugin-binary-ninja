@@ -1,6 +1,6 @@
 from binaryninja import log_info, BinaryView
-from revengai import AnalysesCoreApi, Configuration, FunctionMapping
-from revengai import BaseResponseBasic, AnalysesCoreApi, ApiClient
+from revengai import AnalysesCoreApi, Configuration, FunctionsCoreApi
+from revengai import AnalysisBasicInfoOutputBody, GetFunctionMapsOutputBody, ApiClient
 from binaryninja import BinaryView, log_error, log_info, Symbol, SymbolType, Function
 
 class AnalysisSyncService:
@@ -26,14 +26,14 @@ class AnalysisSyncService:
         """
         with ApiClient(self.sdk_config) as api_client:
             analyses_client = AnalysesCoreApi(api_client)
-            analysis_details: BaseResponseBasic = analyses_client.get_analysis_basic_info(
+            analysis_details: AnalysisBasicInfoOutputBody = analyses_client.get_analysis_basic_info_0(
                 analysis_id=analysis_id
             )
 
-        if not (analysis_details.data and analysis_details.data.base_address is not None):
+        if analysis_details.base_address is None:
             return bv
 
-        remote_base_address: int = analysis_details.data.base_address
+        remote_base_address: int = analysis_details.base_address
         local_base_address: int = self._get_current_base_address(bv)
 
         if local_base_address == remote_base_address:
@@ -41,22 +41,20 @@ class AnalysisSyncService:
 
         return self._rebase_program(bv, remote_base_address - local_base_address)
 
-    def _fetch_function_map(self, analysis_id: int) -> FunctionMapping:
+    def _fetch_function_map(self, analysis_id: int) -> GetFunctionMapsOutputBody:
         """
         Fetches the function map for the given analysis ID.
         """
         with ApiClient(self.sdk_config) as api_client:
-            analyses_client = AnalysesCoreApi(api_client)
+            functions_client = FunctionsCoreApi(api_client)
 
-            function_map = analyses_client.get_analysis_function_map(
+            return functions_client.v3_get_analysis_func_maps(
                 analysis_id=analysis_id
             )
-            func_map = function_map.data.function_maps
-            return func_map
 
     def _match_functions(
         self,
-        func_map: FunctionMapping,
+        func_map: GetFunctionMapsOutputBody,
         bv: BinaryView,
     ) -> None:
         function_map = func_map.function_map
