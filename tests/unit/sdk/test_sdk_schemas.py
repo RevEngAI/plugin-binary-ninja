@@ -18,14 +18,15 @@ from revengai.models.summary_data import SummaryData
 from revengai.models.task_status import TaskStatus
 from revengai.models.workflow_progress import WorkflowProgress
 
-PINNED = (4, 4, 0)
+PINNED = (4, 72, 2)
 
 API_METHODS = {
     "ConfigApi": ["v3_get_config", "v3_get_models"],
-    "BinariesApi": ["v3_upload_file", "v3_search_binaries"],
+    "BinariesApi": ["v3_search_binaries"],
     "CollectionsApi": ["v3_list_collections"],
     "AnalysesCoreApi": [
         "create_analysis",
+        "upload_file",
         "v3_get_analysis_operation",
         "get_analysis_basic_info_0",
         "start_analysis_function_matching",
@@ -118,12 +119,16 @@ def test_collection_list_item_has_plugin_fields():
 
 def test_upload_file_accepts_plugin_kwargs():
     assert {"upload_file_type", "file", "force_overwrite"} <= _params(
-        revengai.BinariesApi.v3_upload_file
+        revengai.AnalysesCoreApi.upload_file
     )
 
 
-def test_upload_output_has_no_envelope():
-    assert "sha_256_hash" in revengai.UploadOutputBody.model_fields
+def test_upload_still_uses_the_v2_envelope():
+    """Upload stays on POST /v2/upload. The v3 endpoint is rejected with a 403
+    from the load balancer in production -- a status /v3/upload does not even
+    declare -- so the deprecated-but-working v2 path is kept deliberately."""
+    assert "data" in revengai.BaseResponseUploadResponse.model_fields
+    assert "sha_256_hash" in revengai.UploadResponse.model_fields
 
 
 def test_get_models_output_has_no_envelope():

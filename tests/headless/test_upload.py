@@ -11,8 +11,7 @@ from reai_toolkit.features.upload import upload as upload_mod
 def test_upload_binary_collects_real_function_boundaries(bv, mocker):
     uploader = upload_mod.BinaryUploader(MagicMock())
     api = mocker.patch.object(upload_mod.revengai, "AnalysesCoreApi").return_value
-    binaries = mocker.patch.object(upload_mod.revengai, "BinariesApi").return_value
-    binaries.v3_upload_file.return_value.sha_256_hash = "abcd"
+    api.upload_file.return_value.data.sha_256_hash = "abcd"
     api.create_analysis.return_value.data.analysis_id = 1
     api.create_analysis.return_value.data.binary_id = 2
     mocker.patch.object(upload_mod, "PeriodicChecker")
