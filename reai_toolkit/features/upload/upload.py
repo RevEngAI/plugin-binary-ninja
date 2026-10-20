@@ -60,12 +60,12 @@ class BinaryUploader:
             file = Path(bv.file.filename).read_bytes()
             if bv.parent_view.length > 10 * 1024 ** 2:
                 log_error(f"RevEng.AI | File size is too large. Please upload a file smaller than 10MB.")
-                return False
+                return False, "File size is too large. Please upload a file smaller than 10MB."
                 
             success, sha_256_hash = self.upload_file(bv.file.filename, revengai.UploadFileType.BINARY)
             if not success:
                 log_error(f"RevEng.AI | Failed to upload binary {bv.file.filename}.")
-                return False
+                return False, sha_256_hash
 
             log_info(f"RevEng.AI | Binary {bv.file.filename} uploaded successfully. SHA-256 hash: {sha_256_hash}")
 
@@ -73,7 +73,7 @@ class BinaryUploader:
                 success, debug_info_hash = self.upload_file(options["debug_info"], revengai.UploadFileType.DEBUG)
                 if not success:
                     log_error(f"RevEng.AI | Failed to upload debug info {options['debug_info']}.")
-                    return False
+                    return False, debug_info_hash
 
                 log_info(f"RevEng.AI | Debug info {options['debug_info']} uploaded successfully. SHA-256 hash: {debug_info_hash}")
             

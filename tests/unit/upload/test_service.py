@@ -79,3 +79,33 @@ def test_get_user_tier_surfaces_failure(uploader, mocker):
 
     assert ok is False
     assert tier is None
+
+
+def test_upload_binary_returns_a_tuple_when_the_upload_fails(mocker):
+    """upload_binary's caller unpacks two values. Returning a bare False on the
+    failure paths raised "cannot unpack non-iterable bool object" and masked the
+    real upload error."""
+    uploader = upload_mod.BinaryUploader(MagicMock())
+    mocker.patch.object(uploader, "upload_file", return_value=(False, "403 Forbidden"))
+    bv = MagicMock()
+    bv.file.filename = "/tmp/sample.bin"
+    bv.parent_view.length = 1024
+    mocker.patch.object(upload_mod.Path, "read_bytes", return_value=b"\x00")
+
+    ok, message = uploader.upload_binary(bv, {"debug_info": None, "tags": [], "is_private": True})
+
+    assert ok is False
+    assert message == "403 Forbidden"
+
+
+def test_upload_binary_returns_a_tuple_when_the_file_is_too_large(mocker):
+    uploader = upload_mod.BinaryUploader(MagicMock())
+    bv = MagicMock()
+    bv.file.filename = "/tmp/big.bin"
+    bv.parent_view.length = 11 * 1024 ** 2
+    mocker.patch.object(upload_mod.Path, "read_bytes", return_value=b"\x00")
+
+    ok, message = uploader.upload_binary(bv, {"debug_info": None, "tags": [], "is_private": True})
+
+    assert ok is False
+    assert "too large" in message

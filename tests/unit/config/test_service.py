@@ -4,7 +4,18 @@ import pytest
 
 pytest.importorskip("binaryninja")
 
+import inspect
+import re
+
+import revengai
+
 from reai_toolkit.features.configuration import config as config_mod
+
+
+def _auth_settings_for(api_cls, serializer):
+    source = inspect.getsource(getattr(api_cls, serializer))
+    block = re.search(r"_auth_settings: List\[str\] = \[(.*?)\]", source, re.S)
+    return re.findall(r"'([^']+)'", block.group(1)) if block else []
 
 
 class FakeSettings:
@@ -41,6 +52,34 @@ def settings():
 def config(mocker, settings):
     mocker.patch.object(config_mod, "Settings", return_value=settings)
     return config_mod.Config()
+
+
+def test_api_key_is_sent_unprefixed(config):
+    """The SDK applies an operation's auth settings in order onto the same
+    Authorization header, so configuring access_token alongside api_key turns
+    every request into "Bearer <key>". The gateway rejects that on /v3/upload
+    with a 403, so the api-key scheme must stay the only one configured."""
+    config.host = "https://example.invalid"
+    config.api_key = "secret-key"
+    config.init_api_config()
+
+    assert set(config.api_config.auth_settings()) == {"APIKey"}
+
+    headers = {}
+    with config.create_api_client() as client:
+        client.update_params_for_auth(
+            headers, [], ["APIKey", "bearerAuth"], "/v3/upload", "POST", None
+        )
+
+    assert headers["Authorization"] == "secret-key"
+
+
+def test_get_me_declares_bearer_auth_only(config):
+    """GET /v2/iam/me is the one operation this plugin calls that declares
+    bearerAuth alone, so it gets no Authorization header and the tier lookup
+    401s. get_user_tier treats that as non-fatal. Tracked separately: the fix
+    has to scope bearer credentials to this call, not the whole client."""
+    assert _auth_settings_for(revengai.IAMUsersApi, "_get_me_serialize") == ["bearerAuth"]
 
 
 def test_check_auth_true_when_get_config_succeeds(config, mocker):
