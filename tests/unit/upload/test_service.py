@@ -1,6 +1,9 @@
+import json
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from pydantic import ValidationError
 
 pytest.importorskip("binaryninja")
 
@@ -69,6 +72,34 @@ def test_get_user_tier_returns_tier(uploader, mocker):
     assert ok is True
     assert tier == upload_mod.ENTHUSIAST_TIER
     api.get_me.assert_called_once_with()
+
+
+def test_get_user_tier_falls_back_when_the_user_model_fails_validation(uploader, mocker):
+    """The SDK marks User fields required that /v2/iam/me does not always send.
+    A strict parse then raises and the tier is lost, so the raw body is re-read.
+    """
+    api = mocker.patch.object(upload_mod.revengai, "IAMUsersApi").return_value
+    api.get_me.side_effect = ValidationError.from_exception_data("User", [])
+    api.get_me_without_preload_content.return_value = SimpleNamespace(
+        status=200,
+        data=json.dumps({"tier": upload_mod.ENTHUSIAST_TIER}),
+    )
+
+    ok, tier = uploader.get_user_tier()
+
+    assert ok is True
+    assert tier == upload_mod.ENTHUSIAST_TIER
+
+
+def test_get_user_tier_surfaces_a_non_200_from_the_fallback(uploader, mocker):
+    api = mocker.patch.object(upload_mod.revengai, "IAMUsersApi").return_value
+    api.get_me.side_effect = ValidationError.from_exception_data("User", [])
+    api.get_me_without_preload_content.return_value = SimpleNamespace(status=500, data="")
+
+    ok, tier = uploader.get_user_tier()
+
+    assert ok is False
+    assert tier is None
 
 
 def test_get_user_tier_surfaces_failure(uploader, mocker):

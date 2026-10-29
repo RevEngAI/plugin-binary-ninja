@@ -1,4 +1,5 @@
 import inspect
+import re
 from importlib.metadata import version
 
 import pytest
@@ -15,10 +16,10 @@ from revengai.models.inline_comment import InlineComment
 from revengai.models.matched_function import MatchedFunction
 from revengai.models.rename_input_body import RenameInputBody
 from revengai.models.summary_data import SummaryData
-from revengai.models.task_status import TaskStatus
+from revengai.models.binary_task_status import BinaryTaskStatus
 from revengai.models.workflow_progress import WorkflowProgress
 
-PINNED = (4, 72, 2)
+PINNED = (4, 74, 4)
 
 API_METHODS = {
     "ConfigApi": ["v3_get_config", "v3_get_models"],
@@ -40,6 +41,7 @@ API_METHODS = {
         "get_functions_matching_status",
         "get_functions_matches",
     ],
+    "IAMUsersApi": ["get_me", "get_me_without_preload_content"],
     "FunctionsRenamingHistoryApi": ["rename_function"],
     "DataTypesApi": ["v3_list_function_signatures"],
     "FunctionsAIDecompilationApi": [
@@ -55,7 +57,7 @@ API_METHODS = {
 
 
 def _version_tuple(value):
-    return tuple(int(part) for part in value.split(".")[:3])
+    return tuple(int(re.match(r"\d+", part).group()) for part in value.split(".")[:3])
 
 
 def _params(func):
@@ -232,7 +234,7 @@ def test_upload_file_type_has_plugin_members():
 
 
 def test_task_status_covers_plugin_state_machine():
-    assert {"UNINITIALISED", "COMPLETED", "FAILED"} <= set(TaskStatus.__members__)
+    assert {"UNINITIALISED", "COMPLETED", "FAILED"} <= set(BinaryTaskStatus.__members__)
 
 
 def test_status_input_covers_analysis_state_machine():
