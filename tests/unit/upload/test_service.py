@@ -140,3 +140,27 @@ def test_upload_binary_returns_a_tuple_when_the_file_is_too_large(mocker):
 
     assert ok is False
     assert "too large" in message
+
+
+def test_upload_binary_includes_every_function_boundary(mocker):
+    """The platform reads a boundary with no include_in_analysis flag as excluded
+    and fails the analysis, so every boundary must say it is included."""
+    uploader = upload_mod.BinaryUploader(MagicMock())
+    mocker.patch.object(uploader, "upload_file", return_value=(True, "abc123"))
+    mocker.patch.object(upload_mod, "PeriodicChecker")
+    analyses_api = mocker.patch.object(upload_mod.revengai, "AnalysesCoreApi")
+    bv = MagicMock()
+    bv.file.filename = "/tmp/sample.bin"
+    bv.parent_view.length = 1024
+    bv.image_base = 0x400000
+    func = MagicMock(start=0x401000, total_bytes=0x20)
+    func.name = "main"
+    bv.functions = [func]
+    mocker.patch.object(upload_mod.Path, "read_bytes", return_value=b"\x00")
+
+    uploader.upload_binary(bv, {"debug_info": None, "tags": [], "is_private": True})
+
+    request = analyses_api.return_value.create_analysis.call_args.kwargs["analysis_create_request"]
+    boundaries = request.symbols.function_boundaries
+    assert len(boundaries) == 1
+    assert boundaries[0].include_in_analysis is True
