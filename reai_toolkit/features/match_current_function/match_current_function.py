@@ -116,9 +116,9 @@ class MatchCurrentFunction(MatchFeature):
 
                 log_info(f"RevEng.AI | Matching status: {status.status} ({status.step_index}/{status.steps_total})")
 
-                if status.status == revengai.TaskStatus.COMPLETED:
+                if status.status == revengai.BinaryTaskStatus.COMPLETED:
                     break
-                if status.status == revengai.TaskStatus.FAILED:
+                if status.status == revengai.BinaryTaskStatus.FAILED:
                     raise Exception(self._matching_error_message(status.messages))
                 if elapsed >= self._POLL_TIMEOUT:
                     raise Exception(f"Function matching timed out after {self._POLL_TIMEOUT:.0f}s")

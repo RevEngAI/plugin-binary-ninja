@@ -69,7 +69,7 @@ def test_match_functions_lists_analyzed_functions_via_list_analysis_functions(mo
 
     core_api = mocker.patch.object(revengai, "AnalysesCoreApi").return_value
     status = MagicMock(step_index=1, steps_total=1)
-    status.status = revengai.TaskStatus.COMPLETED
+    status.status = revengai.BinaryTaskStatus.COMPLETED
     core_api.get_analysis_function_matching_status.return_value = status
     core_api.get_analysis_function_matches.return_value = MagicMock(matches=[])
 
