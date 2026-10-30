@@ -114,6 +114,7 @@ class BinaryUploader:
                         "mangled_name": func.name,
                         "start_address": func.start,
                         "end_address": func.start + func.total_bytes,
+                        "include_in_analysis": True,
                 })
             log_info(f"RevEng.AI | Collected {len(symbols['function_boundaries'])} functions from Binary Ninja!")
 
