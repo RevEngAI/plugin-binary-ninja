@@ -1,6 +1,9 @@
+import json
 import revengai
 from pathlib import Path
 from binaryninja import BinaryView, log_info, log_error
+from pydantic import ValidationError
+from revengai.models.user import User
 from os.path import basename
 from reai_toolkit.utils import PeriodicChecker
 from reai_toolkit.utils.core.sync import AnalysisSyncService
@@ -20,13 +23,37 @@ class BinaryUploader:
         try:
             with self.config.create_api_client() as api_client:
                 api_instance = revengai.IAMUsersApi(api_client)
-                user = api_instance.get_me()
+                try:
+                    user = api_instance.get_me()
+                except ValidationError:
+                    user = self._get_me_unvalidated(api_client)
+                if user is None:
+                    return False, None
                 tier = user.tier
             log_info(f"RevEng.AI | User tier: {tier}")
             return True, tier
         except Exception as e:
             log_error(f"RevEng.AI | Failed to get user tier: {str(e)}")
             return False, None
+
+    @staticmethod
+    def _get_me_unvalidated(api_client):
+        """Re-read GET /v2/iam/me without model validation.
+
+        The SDK marks fields required that the API does not always return, so a
+        strict parse raises and the tier is lost even though the response body
+        carries it. Note get_me_without_preload_content does not raise on a
+        non-2xx, hence the explicit status check.
+        """
+        try:
+            response = revengai.IAMUsersApi(api_client).get_me_without_preload_content()
+            if response.status != 200:
+                log_error(f"RevEng.AI | Failed to get user tier: HTTP {response.status}")
+                return None
+            return User.model_construct(**json.loads(response.data))
+        except Exception as e:
+            log_error(f"RevEng.AI | Failed to get user tier: {str(e)}")
+            return None
 
     def get_models(self, bv: BinaryView):
         try:
@@ -87,6 +114,7 @@ class BinaryUploader:
                         "mangled_name": func.name,
                         "start_address": func.start,
                         "end_address": func.start + func.total_bytes,
+                        "include_in_analysis": True,
                 })
             log_info(f"RevEng.AI | Collected {len(symbols['function_boundaries'])} functions from Binary Ninja!")
 

@@ -32,7 +32,7 @@ def test_match_current_function_lists_analyzed_functions_via_list_analysis_funct
         "functions": entries
     }
     status = MagicMock(step_index=1, steps_total=1)
-    status.status = revengai.TaskStatus.COMPLETED
+    status.status = revengai.BinaryTaskStatus.COMPLETED
     functions_api.get_functions_matching_status.return_value = status
     functions_api.get_functions_matches.return_value = MagicMock(matches=[])
 

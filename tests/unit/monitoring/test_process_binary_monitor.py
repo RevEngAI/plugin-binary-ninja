@@ -45,6 +45,7 @@ def _basic_info(model_id):
         detected_architecture="x86_64",
         detected_binary_format="ELF",
         detected_binary_type="linux",
+        detected_language="C",
         function_count=12,
         is_advanced=False,
         is_owner=True,
