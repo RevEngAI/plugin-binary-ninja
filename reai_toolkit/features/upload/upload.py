@@ -111,7 +111,7 @@ class BinaryUploader:
 
             for func in bv.functions:
                 symbols["function_boundaries"].append({
-                        "mangled_name": func.name,
+                        "mangled_name": func.name or f"sub_{func.start:x}",
                         "start_address": func.start,
                         "end_address": func.start + func.total_bytes,
                         "include_in_analysis": True,

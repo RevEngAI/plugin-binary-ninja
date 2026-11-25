@@ -188,3 +188,24 @@ def test_upload_binary_creates_analysis_via_v3(mocker):
     assert request.tags == ["t"]
     assert request.analysis_scope == "PUBLIC"
     assert checker.return_value.start_checking.call_args.args[1:3] == (1, 2)
+
+
+def test_upload_binary_names_unnamed_functions(mocker):
+    uploader = upload_mod.BinaryUploader(MagicMock())
+    mocker.patch.object(uploader, "upload_file", return_value=(True, "a" * 64))
+    mocker.patch.object(upload_mod, "PeriodicChecker")
+    api = mocker.patch.object(upload_mod.revengai, "AnalysesCoreApi").return_value
+    bv = MagicMock()
+    bv.file.filename = "/tmp/sample.bin"
+    bv.parent_view.length = 1024
+    bv.image_base = 0x400000
+    func = MagicMock(start=0x401000, total_bytes=0x20)
+    func.name = ""
+    bv.functions = [func]
+    mocker.patch.object(upload_mod.Path, "read_bytes", return_value=b"\x00")
+
+    ok, _ = uploader.upload_binary(bv, {"debug_info": None, "tags": [], "is_private": True})
+
+    assert ok is True
+    request = api.v3_create_analysis.call_args.kwargs["create_request"]
+    assert request.symbols.function_boundaries[0].mangled_name == "sub_401000"
