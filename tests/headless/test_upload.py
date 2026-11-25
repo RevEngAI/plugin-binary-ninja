@@ -11,9 +11,9 @@ from reai_toolkit.features.upload import upload as upload_mod
 def test_upload_binary_collects_real_function_boundaries(bv, mocker):
     uploader = upload_mod.BinaryUploader(MagicMock())
     api = mocker.patch.object(upload_mod.revengai, "AnalysesCoreApi").return_value
-    api.upload_file.return_value.data.sha_256_hash = "abcd"
-    api.create_analysis.return_value.data.analysis_id = 1
-    api.create_analysis.return_value.data.binary_id = 2
+    api.upload_file.return_value.data.sha_256_hash = "a" * 64
+    api.v3_create_analysis.return_value.metadata.analysis_id = 1
+    api.v3_create_analysis.return_value.metadata.binary_id = 2
     mocker.patch.object(upload_mod, "PeriodicChecker")
 
     ok, _ = uploader.upload_binary(
@@ -21,11 +21,11 @@ def test_upload_binary_collects_real_function_boundaries(bv, mocker):
     )
 
     assert ok is True
-    request = api.create_analysis.call_args.kwargs["analysis_create_request"]
+    request = api.v3_create_analysis.call_args.kwargs["create_request"]
     payload = request.to_dict()
     symbols = payload["symbols"]
     real_starts = {f.start for f in bv.functions}
     assert symbols["base_address"] == bv.image_base
     assert {b["start_address"] for b in symbols["function_boundaries"]} == real_starts
-    assert payload["analysis_scope"] == upload_mod.revengai.AnalysisScope.PRIVATE
-    assert payload["tags"] == [{"name": "unit-test"}]
+    assert payload["analysis_scope"] == "PRIVATE"
+    assert payload["tags"] == ["unit-test"]
