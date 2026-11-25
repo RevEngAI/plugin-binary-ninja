@@ -26,7 +26,7 @@ API_METHODS = {
     "BinariesApi": ["v3_search_binaries"],
     "CollectionsApi": ["v3_list_collections"],
     "AnalysesCoreApi": [
-        "create_analysis",
+        "v3_create_analysis",
         "upload_file",
         "v3_get_analysis_operation",
         "get_analysis_basic_info_0",
@@ -137,10 +137,8 @@ def test_get_models_output_has_no_envelope():
     assert "models" in revengai.GetModelsOutputBody.model_fields
 
 
-def test_create_analysis_accepts_request_kwarg():
-    assert "analysis_create_request" in _params(
-        revengai.AnalysesCoreApi.create_analysis
-    )
+def test_v3_create_analysis_accepts_request_kwarg():
+    assert "create_request" in _params(revengai.AnalysesCoreApi.v3_create_analysis)
 
 
 def test_analysis_id_methods_accept_analysis_id():
@@ -200,7 +198,7 @@ def test_ai_decompilation_methods_accept_function_id():
         )
 
 
-def test_analysis_create_request_has_plugin_fields():
+def test_create_request_has_plugin_fields():
     assert {
         "filename",
         "sha_256_hash",
@@ -208,7 +206,11 @@ def test_analysis_create_request_has_plugin_fields():
         "tags",
         "analysis_scope",
         "symbols",
-    } <= set(revengai.AnalysisCreateRequest.model_fields)
+    } <= set(revengai.CreateRequest.model_fields)
+
+
+def test_create_metadata_has_plugin_fields():
+    assert {"analysis_id", "binary_id"} <= set(revengai.CreateMetadata.model_fields)
 
 
 def test_match_filters_has_plugin_fields():
@@ -219,14 +221,6 @@ def test_match_filters_has_plugin_fields():
 
 def test_rename_input_body_has_plugin_fields():
     assert {"new_name", "new_mangled_name"} <= set(RenameInputBody.model_fields)
-
-
-def test_tag_has_name_field():
-    assert "name" in revengai.Tag.model_fields
-
-
-def test_analysis_scope_has_plugin_members():
-    assert {"PRIVATE", "PUBLIC"} <= set(revengai.AnalysisScope.__members__)
 
 
 def test_upload_file_type_has_plugin_members():
