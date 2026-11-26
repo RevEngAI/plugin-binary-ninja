@@ -21,11 +21,12 @@ def test_get_function_id_by_addr_uses_list_analysis_functions(mocker):
     functions_api = mocker.patch.object(revengai, "FunctionsCoreApi").return_value
     entry = MagicMock(function_vaddr=0x1000, function_id=7)
     functions_api.list_analysis_functions.return_value.functions = [entry]
+    functions_api.list_analysis_functions.return_value.total_count = 1
     bv = MagicMock()
 
     function_id = bn_mod.get_function_id_by_addr(bv, 0x1000, config)
 
-    functions_api.list_analysis_functions.assert_called_once_with(analysis_id=42)
+    functions_api.list_analysis_functions.assert_called_once_with(analysis_id=42, offset=0, limit=500)
     assert function_id == 7
 
 
@@ -57,3 +58,46 @@ def test_rename_in_portal_uses_rename_function(mocker):
     assert isinstance(body, revengai.RenameInputBody)
     assert body.new_name == "new_name"
     assert body.new_mangled_name == "new_mangled_name"
+
+
+def _paged(functions_api, entries, page_size):
+    def list_analysis_functions(analysis_id, offset=0, limit=100):
+        page = MagicMock(total_count=len(entries))
+        page.functions = entries[offset : offset + min(limit, page_size)]
+        return page
+
+    functions_api.list_analysis_functions.side_effect = list_analysis_functions
+
+
+def test_list_all_analysis_functions_pages_until_total_count():
+    functions_api = MagicMock()
+    entries = [MagicMock(function_vaddr=i, function_id=i) for i in range(1200)]
+    _paged(functions_api, entries, page_size=500)
+
+    result = bn_mod.list_all_analysis_functions(functions_api, 42)
+
+    assert result == entries
+    assert [c.kwargs for c in functions_api.list_analysis_functions.call_args_list] == [
+        {"analysis_id": 42, "offset": 0, "limit": 500},
+        {"analysis_id": 42, "offset": 500, "limit": 500},
+        {"analysis_id": 42, "offset": 1000, "limit": 500},
+    ]
+
+
+def test_list_all_analysis_functions_stops_on_empty_page():
+    functions_api = MagicMock()
+    page = MagicMock(total_count=10, functions=[])
+    functions_api.list_analysis_functions.return_value = page
+
+    assert bn_mod.list_all_analysis_functions(functions_api, 42) == []
+    functions_api.list_analysis_functions.assert_called_once()
+
+
+def test_get_function_id_by_addr_finds_function_beyond_first_page(mocker):
+    config = MagicMock()
+    config.get_analysis_id.return_value = 42
+    functions_api = mocker.patch.object(revengai, "FunctionsCoreApi").return_value
+    entries = [MagicMock(function_vaddr=i, function_id=i + 1) for i in range(150)]
+    _paged(functions_api, entries, page_size=100)
+
+    assert bn_mod.get_function_id_by_addr(MagicMock(), 120, config) == 121

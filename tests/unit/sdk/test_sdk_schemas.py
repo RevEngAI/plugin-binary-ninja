@@ -149,12 +149,12 @@ def test_analysis_id_methods_accept_analysis_id():
     )
 
 
-def test_list_analysis_functions_accepts_analysis_id():
-    assert "analysis_id" in _params(revengai.FunctionsCoreApi.list_analysis_functions)
+def test_list_analysis_functions_accepts_paging_params():
+    assert {"analysis_id", "offset", "limit"} <= _params(revengai.FunctionsCoreApi.list_analysis_functions)
 
 
 def test_list_analysis_functions_output_has_no_envelope():
-    assert {"functions"} <= set(revengai.ListAnalysisFunctionsOutputBody.model_fields)
+    assert {"functions", "total_count"} <= set(revengai.ListAnalysisFunctionsOutputBody.model_fields)
 
 
 def test_start_functions_matching_accepts_request_kwargs():

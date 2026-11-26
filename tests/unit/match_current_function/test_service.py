@@ -27,10 +27,10 @@ def test_match_current_function_lists_analyzed_functions_via_list_analysis_funct
 
     entries = [{"function_id": 7, "function_vaddr": 0x1000, "function_name": "foo"}]
     functions_api = mocker.patch.object(revengai, "FunctionsCoreApi").return_value
-    functions_api.list_analysis_functions.return_value.functions = entries
-    functions_api.list_analysis_functions.return_value.to_dict.return_value = {
-        "functions": entries
-    }
+    functions_api.list_analysis_functions.return_value.functions = [
+        MagicMock(**{"to_dict.return_value": e}) for e in entries
+    ]
+    functions_api.list_analysis_functions.return_value.total_count = len(entries)
     status = MagicMock(step_index=1, steps_total=1)
     status.status = revengai.BinaryTaskStatus.COMPLETED
     functions_api.get_functions_matching_status.return_value = status

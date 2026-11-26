@@ -25,6 +25,7 @@ def test_view_function_in_portal_uses_list_analysis_functions(mocker):
     functions_api = mocker.patch.object(revengai, "FunctionsCoreApi").return_value
     entry = MagicMock(function_vaddr=0x2000, function_id=99)
     functions_api.list_analysis_functions.return_value.functions = [entry]
+    functions_api.list_analysis_functions.return_value.total_count = 1
 
     interaction_cls = mocker.patch.object(vfp_mod, "InteractionHandler")
 
