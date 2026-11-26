@@ -40,6 +40,7 @@ API_METHODS = {
         "start_functions_matching",
         "get_functions_matching_status",
         "get_functions_matches",
+        "get_function_blocks_0",
     ],
     "IAMUsersApi": ["get_me", "get_me_without_preload_content"],
     "FunctionsRenamingHistoryApi": ["rename_function"],
@@ -52,6 +53,7 @@ API_METHODS = {
         "get_ai_decompilation_inline_comments",
         "regenerate_ai_decompilation_summary",
         "regenerate_ai_decompilation_inline_comments",
+        "v3_get_ai_decompilation_line_attributions",
     ],
 }
 
@@ -192,10 +194,17 @@ def test_ai_decompilation_methods_accept_function_id():
         "get_ai_decompilation",
         "get_ai_decompilation_summary",
         "get_ai_decompilation_inline_comments",
+        "v3_get_ai_decompilation_line_attributions",
     ):
         assert "function_id" in _params(
             getattr(revengai.FunctionsAIDecompilationApi, method)
         )
+
+
+def test_line_attributions_have_plugin_fields():
+    assert "function_id" in _params(revengai.FunctionsCoreApi.get_function_blocks_0)
+    assert "basic_blocks" in revengai.DisassemblyOutputBody.model_fields
+    assert "disassembly_line_number_to_ai_decompilation_line_numbers" in revengai.LineAttributionsData.model_fields
 
 
 def test_create_request_has_plugin_fields():
