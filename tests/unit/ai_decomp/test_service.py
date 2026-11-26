@@ -118,3 +118,42 @@ def test_render_injects_summary_and_inline_comments(checker):
     assert "/*" in text
     assert "summary line" in text
     assert "// returns zero" in text
+
+
+def test_render_maps_display_lines_to_source_lines(checker):
+    Comment = namedtuple("Comment", "line comment")
+    checker._summary_text = "summary line"
+    checker._decompilation = "int main() {\n    return 0;\n}"
+    checker._inline_comments = [Comment(2, "returns zero")]
+
+    checker._render()
+
+    assert checker.display_source == [None, None, None, 0, None, 1, 2]
+
+
+def test_decomp_completed_fetches_line_attributions(checker, api, mocker):
+    core = mocker.patch.object(mon_mod.revengai, "FunctionsCoreApi").return_value
+    api.get_ai_decompilation_status.return_value = _status("COMPLETED")
+    api.get_ai_decompilation.return_value = MagicMock(decompilation="int main() {}")
+    api.v3_get_ai_decompilation_line_attributions.return_value = MagicMock(
+        disassembly_line_number_to_ai_decompilation_line_numbers={"0": [0]}
+    )
+    core.get_function_blocks_0.return_value = MagicMock(
+        basic_blocks=[{"min_addr": 0x10, "asm": ["0x10\tpush rbp", "0x11\tret"]}]
+    )
+
+    checker._ai_decompiler_worker()
+
+    core.get_function_blocks_0.assert_called_once_with(42)
+    assert checker.attributions.addresses_for(0) == [0x11]
+
+
+def test_line_attributions_failure_is_empty(checker, api):
+    api.get_ai_decompilation_status.return_value = _status("COMPLETED")
+    api.get_ai_decompilation.return_value = MagicMock(decompilation="int main() {}")
+    api.v3_get_ai_decompilation_line_attributions.side_effect = Exception("boom")
+
+    checker._ai_decompiler_worker()
+
+    assert checker.attributions.is_empty()
+    assert checker._phase == mon_mod._PHASE_SUMMARY

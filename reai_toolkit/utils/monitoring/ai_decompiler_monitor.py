@@ -4,6 +4,7 @@ from binaryninja import log_info, log_error
 import revengai
 from PySide6.QtWidgets import QPlainTextEdit
 from PySide6.QtCore import QTimer, QObject, Signal
+from .line_attributions import LineAttributions, read_assembly
 
 _STATUS_UNINITIALISED = "UNINITIALISED"
 _STATUS_COMPLETED = "COMPLETED"
@@ -24,8 +25,10 @@ def _format_summary_as_comment(summary: str) -> str:
     return f"/*\n{body}\n */"
 
 
-def _inject_inline_comments(code: str, comments) -> str:
+def _inject_inline_comments(code: str, comments):
+    """Returns the text and, per displayed line, its 0-based source line (None for injected comments)."""
     lines = code.split("\n")
+    sources = list(range(len(lines)))
     for c in sorted(comments, key=lambda x: x.line, reverse=True):
         idx = c.line - 1
         if idx < 0 or idx >= len(lines):
@@ -33,7 +36,8 @@ def _inject_inline_comments(code: str, comments) -> str:
         target = lines[idx]
         indent = target[: len(target) - len(target.lstrip())]
         lines.insert(idx, f"{indent}// {c.comment}")
-    return "\n".join(lines)
+        sources.insert(idx, None)
+    return "\n".join(lines), sources
 
 
 class AIDecompilerChecker(QObject):
@@ -52,6 +56,8 @@ class AIDecompilerChecker(QObject):
         self._inline_comments = None
         self._summary_requeued = False
         self._comments_requeued = False
+        self.attributions = LineAttributions()
+        self.display_source = []
         self.update_text_signal.connect(self._update_text_slot)
 
     def _update_text_slot(self, callback, text):
@@ -87,6 +93,8 @@ class AIDecompilerChecker(QObject):
             self._inline_comments = None
             self._summary_requeued = False
             self._comments_requeued = False
+            self.attributions = LineAttributions()
+            self.display_source = []
 
             if self._ai_decompiler_timer:
                 self._ai_decompiler_timer.stop()
@@ -110,11 +118,11 @@ class AIDecompilerChecker(QObject):
         if self._summary_text:
             parts.append(_format_summary_as_comment(self._summary_text))
 
-        body = self._decompilation or ""
-        if self._inline_comments:
-            body = _inject_inline_comments(body, self._inline_comments)
+        body, sources = _inject_inline_comments(self._decompilation or "", self._inline_comments or [])
 
         text = "\n".join(parts + [body]) if parts else body
+        prefix = sum(p.count("\n") + 1 for p in parts)
+        self.display_source = [None] * prefix + sources
         self.update_text_signal.emit(self._current_callback, text)
 
     def _run_decomp_phase(self):
@@ -140,6 +148,7 @@ class AIDecompilerChecker(QObject):
         with self._current_config.create_api_client() as api_client:
             self._decompilation = self._api(api_client).get_ai_decompilation(fid).decompilation
         log_info(f"RevEng.AI | AI Decompilation for Function ID {fid} completed")
+        self.attributions = self._fetch_attributions(fid)
         self._render()
         self._phase = _PHASE_SUMMARY
 
@@ -194,6 +203,19 @@ class AIDecompilerChecker(QObject):
         except Exception as ex:
             log_error(f"RevEng.AI | Error fetching inline comments for Function ID {fid}: {str(ex)}")
             self._finish()
+
+    def _fetch_attributions(self, fid) -> LineAttributions:
+        try:
+            with self._current_config.create_api_client() as api_client:
+                data = self._api(api_client).v3_get_ai_decompilation_line_attributions(fid)
+                mapping = data.disassembly_line_number_to_ai_decompilation_line_numbers
+                if not mapping:
+                    return LineAttributions()
+                blocks = revengai.FunctionsCoreApi(api_client).get_function_blocks_0(fid).basic_blocks
+            return LineAttributions.of(mapping, read_assembly(blocks))
+        except Exception as ex:
+            log_error(f"RevEng.AI | Error fetching line attributions for Function ID {fid}: {str(ex)}")
+            return LineAttributions()
 
     def _api_regenerate_summary(self, api_client, fid):
         self._api(api_client).regenerate_ai_decompilation_summary(fid)
