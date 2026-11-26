@@ -70,12 +70,19 @@ def get_function_by_addr(bv: BinaryView, addr: int) -> Function:
     
     return functions_containing[0]
 
+def list_all_analysis_functions(functions_api, analysis_id: int) -> list:
+    functions = []
+    while True:
+        page = functions_api.list_analysis_functions(analysis_id=analysis_id, offset=len(functions), limit=500)
+        functions.extend(page.functions)
+        if not page.functions or len(functions) >= page.total_count:
+            return functions
+
 def get_function_id_by_addr(bv: BinaryView, addr: int, config):
     with config.create_api_client() as api_client:
         api_instance = revengai.FunctionsCoreApi(api_client)
         analysis_id = config.get_analysis_id(bv)
-        api_response = api_instance.list_analysis_functions(analysis_id=analysis_id)
-        analyzed_functions = api_response.functions
+        analyzed_functions = list_all_analysis_functions(api_instance, analysis_id)
         target_function = next((f for f in analyzed_functions if f.function_vaddr == addr), None)
         if not target_function:
             log_error(f"RevEng.AI | Function not found at 0x{addr:x}")

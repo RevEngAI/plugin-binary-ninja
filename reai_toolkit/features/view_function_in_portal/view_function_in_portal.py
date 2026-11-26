@@ -2,6 +2,7 @@ from binaryninja import BinaryView, log_info, log_error
 from binaryninja.interaction import InteractionHandler
 import revengai
 from typing import Dict
+from reai_toolkit.utils.core.binary_ninja import list_all_analysis_functions
 
 class ViewFunctionInPortal:
     def __init__(self, config):
@@ -28,8 +29,7 @@ class ViewFunctionInPortal:
 
             with self.config.create_api_client() as api_client:
                 api_instance = revengai.FunctionsCoreApi(api_client)
-                api_response = api_instance.list_analysis_functions(analysis_id=analysis_id)
-                analyzed_functions = api_response.functions
+                analyzed_functions = list_all_analysis_functions(api_instance, analysis_id)
                 log_info(f"RevEng.AI | Analyzed functions: {analyzed_functions}")
 
             analyzed_function = next((f for f in analyzed_functions if f.function_vaddr == function.start), None)
