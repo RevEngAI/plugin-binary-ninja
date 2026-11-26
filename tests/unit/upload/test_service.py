@@ -209,3 +209,34 @@ def test_upload_binary_names_unnamed_functions(mocker):
     assert ok is True
     request = api.v3_create_analysis.call_args.kwargs["create_request"]
     assert request.symbols.function_boundaries[0].mangled_name == "sub_401000"
+
+
+def _create_request(mocker, options):
+    uploader = upload_mod.BinaryUploader(MagicMock())
+    mocker.patch.object(uploader, "upload_file", return_value=(True, "a" * 64))
+    mocker.patch.object(upload_mod, "PeriodicChecker")
+    analyses_api = mocker.patch.object(upload_mod.revengai, "AnalysesCoreApi")
+    bv = MagicMock()
+    bv.file.filename = "/tmp/sample.bin"
+    bv.parent_view.length = 1024
+    bv.image_base = 0
+    bv.functions = []
+    mocker.patch.object(upload_mod.Path, "read_bytes", return_value=b"\x00")
+
+    uploader.upload_binary(bv, {"debug_info": None, "tags": [], "is_private": True, **options})
+
+    return analyses_api.return_value.v3_create_analysis.call_args.kwargs["create_request"]
+
+
+def test_upload_binary_sends_binary_config_for_blob(mocker):
+    request = _create_request(mocker, {"file_format": "blob", "isa": "arm", "platform": "linux"})
+
+    assert request.binary_config.file_format == "blob"
+    assert request.binary_config.isa == "arm"
+    assert request.binary_config.platform == "linux"
+
+
+def test_upload_binary_auto_leaves_binary_config_unset(mocker):
+    request = _create_request(mocker, {"file_format": None, "isa": None, "platform": None})
+
+    assert request.binary_config is None

@@ -412,3 +412,9 @@ def test_analysis_data_types_group_has_analysis_id_and_items():
     from revengai.models.analysis_data_types_group import AnalysisDataTypesGroup
 
     assert {"analysis_id", "items"} <= set(AnalysisDataTypesGroup.model_fields)
+
+
+def test_binary_config_has_plugin_fields():
+    assert "binary_config" in revengai.CreateRequest.model_fields
+    assert {"file_format", "isa", "platform"} <= set(revengai.BinaryConfig.model_fields)
+    revengai.BinaryConfig(file_format="blob", isa="arm", platform="linux")

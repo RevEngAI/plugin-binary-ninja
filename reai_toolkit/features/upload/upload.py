@@ -79,6 +79,12 @@ class BinaryUploader:
             log_error(f"RevEng.AI | Failed to upload file {file_path}: {str(e)}")
             return False, str(e)
                 
+    @staticmethod
+    def _binary_config(options: dict):
+        """Overrides for auto-detection. None (Auto) leaves a field unset."""
+        fields = {k: options.get(k) for k in ("file_format", "isa", "platform") if options.get(k)}
+        return revengai.BinaryConfig(**fields) if fields else None
+
     def upload_binary(self, bv: BinaryView, options: dict):
         try:
 
@@ -128,7 +134,8 @@ class BinaryUploader:
                     debug_hash=debug_info_hash if options["debug_info"] else None,
                     tags=list(options["tags"]),
                     analysis_scope="PRIVATE" if options["is_private"] else "PUBLIC",
-                    symbols=symbols
+                    symbols=symbols,
+                    binary_config=self._binary_config(options),
                 )
 
                 analysis_result = analyses_client.v3_create_analysis(

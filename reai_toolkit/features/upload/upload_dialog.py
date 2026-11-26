@@ -9,6 +9,11 @@ PRIVATE_DISABLED_TOOLTIP = (
     "Upgrade your plan to create private analyses."
 )
 
+# None means Auto: the server detects the value.
+FILE_FORMATS = [None, "pe", "elf", "blob"]
+ISAS = [None, "x86", "x86_64", "arm"]
+PLATFORMS = [None, "linux", "windows", "android"]
+
 class UploadDialog(QDialog):
     def __init__(self, config, uploader, bv):
         super().__init__()
@@ -45,6 +50,10 @@ class UploadDialog(QDialog):
         tags_layout.addWidget(tags_label)
         tags_layout.addWidget(self.tags_input)
         layout.addLayout(tags_layout)
+
+        self.file_format_combo = self._add_choice(layout, "File Format:", FILE_FORMATS)
+        self.isa_combo = self._add_choice(layout, "ISA:", ISAS)
+        self.platform_combo = self._add_choice(layout, "Platform:", PLATFORMS)
         
         privacy_group = QGroupBox("Privacy:")
         privacy_layout = QVBoxLayout()
@@ -98,6 +107,17 @@ class UploadDialog(QDialog):
         self.show()
         QCoreApplication.processEvents()
 
+    @staticmethod
+    def _add_choice(layout, label, values):
+        row = QHBoxLayout()
+        combo = QComboBox()
+        for value in values:
+            combo.addItem(value or "Auto", value)
+        row.addWidget(QLabel(label))
+        row.addWidget(combo)
+        layout.addLayout(row)
+        return combo
+
     def _apply_tier_restrictions(self):
         """Disable private-analysis creation for tiers that aren't allowed it.
 
@@ -141,5 +161,8 @@ class UploadDialog(QDialog):
         return {
             'debug_info': self.debug_combo.currentText(),
             'tags': [tag.strip() for tag in self.tags_input.text().split(',') if tag.strip()],
-            'is_private': self.private_radio.isChecked()
+            'is_private': self.private_radio.isChecked(),
+            'file_format': self.file_format_combo.currentData(),
+            'isa': self.isa_combo.currentData(),
+            'platform': self.platform_combo.currentData(),
         } 
