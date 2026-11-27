@@ -102,8 +102,12 @@ def test_init_config_uses_v3_binary_search(config, mocker):
     mocker.patch.object(config, "check_auth", return_value=True)
     sync = mocker.patch.object(config_mod, "AnalysisSyncService")
     api = mocker.patch.object(config_mod.revengai, "BinariesApi").return_value
+    mocker.patch.object(config_mod.revengai, "ConfigApi").return_value.v3_get_models.return_value.models = ["binnet-1.0"]
     api.v3_search_binaries.return_value = MagicMock(
-        results=[MagicMock(binary_id=11, analysis_id=22, model_id=33)]
+        results=[
+            MagicMock(binary_id=10, analysis_id=20, model_id=30, model_name="binnet-0.7-x86-64-linux"),
+            MagicMock(binary_id=11, analysis_id=22, model_id=33, model_name="binnet-1.0"),
+        ]
     )
     config.api_key = "key"
 
@@ -121,6 +125,7 @@ def test_init_config_raises_when_v3_search_returns_no_results(config, mocker):
     mocker.patch.object(config_mod, "get_sha256", return_value="deadbeef")
     mocker.patch.object(config, "check_auth", return_value=True)
     api = mocker.patch.object(config_mod.revengai, "BinariesApi").return_value
+    mocker.patch.object(config_mod.revengai, "ConfigApi")
     api.v3_search_binaries.return_value = MagicMock(results=[])
     config.api_key = "key"
 
@@ -128,6 +133,18 @@ def test_init_config_raises_when_v3_search_returns_no_results(config, mocker):
 
     assert ok is False
     assert "not found" in message
+
+
+def test_filter_supported_models_keeps_offered_models_and_variants(config, mocker):
+    mocker.patch.object(config_mod.revengai, "ConfigApi").return_value.v3_get_models.return_value.models = ["binnet-1.0"]
+    results = [
+        MagicMock(model_name="binnet-1.0"),
+        MagicMock(model_name="binnet-1.0-x86-64-linux"),
+        MagicMock(model_name="binnet-0.7-x86-64-windows"),
+        MagicMock(model_name="binnet-1.01"),
+    ]
+
+    assert config.filter_supported_models(results) == results[:2]
 
 
 def test_set_current_info_round_trips_through_settings(config):
