@@ -172,6 +172,10 @@ def _resolve_typedef_dep(entry: dict, data_types: dict, deps_by_name: dict) -> N
         data_types,
         deps_by_name,
     )
+    if base_type is None:
+        # libbs can't apply a typedef without a target type.
+        del deps_by_name[name]
+        return
     deps_by_name[name]["type"] = base_type
 
 
