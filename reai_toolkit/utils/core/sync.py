@@ -76,7 +76,7 @@ class AnalysisSyncService:
             start_ea = func.start
             if str(start_ea) in inverse_function_map:
                 new_name: str | None = func_map.name_map.get(str(start_ea), None)
-                if new_name is None:
+                if not new_name or new_name.startswith(("sub_", "FUN_")):
                     continue
 
                 # Check if function has a user-defined symbol, skip if it does
