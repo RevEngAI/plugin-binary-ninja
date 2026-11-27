@@ -37,6 +37,18 @@ def test_match_functions_renames_auto_named_function(mocker):
     bv.define_user_symbol.assert_called_once_with(symbol.return_value)
 
 
+@pytest.mark.parametrize("new_name", ["", "FUN_00101000", "sub_101000"])
+def test_match_functions_skips_empty_and_placeholder_names(mocker, new_name):
+    service = sync_mod.AnalysisSyncService(MagicMock())
+    bv = MagicMock()
+    bv.functions = [_func(0x1000, auto=True)]
+    mocker.patch.object(sync_mod, "Symbol")
+
+    service._match_functions(func_map=_func_map(0x1000, new_name=new_name), bv=bv)
+
+    bv.define_user_symbol.assert_not_called()
+
+
 def test_match_functions_skips_user_defined_function(mocker):
     service = sync_mod.AnalysisSyncService(MagicMock())
     bv = MagicMock()

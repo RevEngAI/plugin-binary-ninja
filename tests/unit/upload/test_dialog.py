@@ -47,3 +47,18 @@ def test_tier_lookup_failure_leaves_private_enabled():
     dlg.private_radio.setEnabled.assert_not_called()
     dlg.private_radio.setToolTip.assert_not_called()
     dlg.public_radio.setChecked.assert_not_called()
+
+
+def test_upload_options_include_binary_config_selection():
+    dlg = MagicMock()
+    dlg.debug_combo.currentText.return_value = ""
+    dlg.tags_input.text.return_value = ""
+    dlg.file_format_combo.currentData.return_value = "blob"
+    dlg.isa_combo.currentData.return_value = "arm"
+    dlg.platform_combo.currentData.return_value = None
+
+    options = dialog_mod.UploadDialog.get_upload_options(dlg)
+
+    assert options["file_format"] == "blob"
+    assert options["isa"] == "arm"
+    assert options["platform"] is None

@@ -146,7 +146,7 @@ def test_upload_binary_includes_every_function_boundary(mocker):
     """The platform reads a boundary with no include_in_analysis flag as excluded
     and fails the analysis, so every boundary must say it is included."""
     uploader = upload_mod.BinaryUploader(MagicMock())
-    mocker.patch.object(uploader, "upload_file", return_value=(True, "abc123"))
+    mocker.patch.object(uploader, "upload_file", return_value=(True, "a" * 64))
     mocker.patch.object(upload_mod, "PeriodicChecker")
     analyses_api = mocker.patch.object(upload_mod.revengai, "AnalysesCoreApi")
     bv = MagicMock()
@@ -160,7 +160,83 @@ def test_upload_binary_includes_every_function_boundary(mocker):
 
     uploader.upload_binary(bv, {"debug_info": None, "tags": [], "is_private": True})
 
-    request = analyses_api.return_value.create_analysis.call_args.kwargs["analysis_create_request"]
+    request = analyses_api.return_value.v3_create_analysis.call_args.kwargs["create_request"]
     boundaries = request.symbols.function_boundaries
     assert len(boundaries) == 1
     assert boundaries[0].include_in_analysis is True
+
+
+def test_upload_binary_creates_analysis_via_v3(mocker):
+    uploader = upload_mod.BinaryUploader(MagicMock())
+    mocker.patch.object(uploader, "upload_file", return_value=(True, "a" * 64))
+    checker = mocker.patch.object(upload_mod, "PeriodicChecker")
+    api = mocker.patch.object(upload_mod.revengai, "AnalysesCoreApi").return_value
+    api.v3_create_analysis.return_value.metadata.analysis_id = 1
+    api.v3_create_analysis.return_value.metadata.binary_id = 2
+    bv = MagicMock()
+    bv.file.filename = "/tmp/sample.bin"
+    bv.parent_view.length = 1024
+    bv.image_base = 0x400000
+    bv.functions = []
+    mocker.patch.object(upload_mod.Path, "read_bytes", return_value=b"\x00")
+
+    ok, _ = uploader.upload_binary(bv, {"debug_info": None, "tags": ["t"], "is_private": False})
+
+    assert ok is True
+    api.create_analysis.assert_not_called()
+    request = api.v3_create_analysis.call_args.kwargs["create_request"]
+    assert request.tags == ["t"]
+    assert request.analysis_scope == "PUBLIC"
+    assert checker.return_value.start_checking.call_args.args[1:3] == (1, 2)
+
+
+def test_upload_binary_names_unnamed_functions(mocker):
+    uploader = upload_mod.BinaryUploader(MagicMock())
+    mocker.patch.object(uploader, "upload_file", return_value=(True, "a" * 64))
+    mocker.patch.object(upload_mod, "PeriodicChecker")
+    api = mocker.patch.object(upload_mod.revengai, "AnalysesCoreApi").return_value
+    bv = MagicMock()
+    bv.file.filename = "/tmp/sample.bin"
+    bv.parent_view.length = 1024
+    bv.image_base = 0x400000
+    func = MagicMock(start=0x401000, total_bytes=0x20)
+    func.name = ""
+    bv.functions = [func]
+    mocker.patch.object(upload_mod.Path, "read_bytes", return_value=b"\x00")
+
+    ok, _ = uploader.upload_binary(bv, {"debug_info": None, "tags": [], "is_private": True})
+
+    assert ok is True
+    request = api.v3_create_analysis.call_args.kwargs["create_request"]
+    assert request.symbols.function_boundaries[0].mangled_name == "sub_401000"
+
+
+def _create_request(mocker, options):
+    uploader = upload_mod.BinaryUploader(MagicMock())
+    mocker.patch.object(uploader, "upload_file", return_value=(True, "a" * 64))
+    mocker.patch.object(upload_mod, "PeriodicChecker")
+    analyses_api = mocker.patch.object(upload_mod.revengai, "AnalysesCoreApi")
+    bv = MagicMock()
+    bv.file.filename = "/tmp/sample.bin"
+    bv.parent_view.length = 1024
+    bv.image_base = 0
+    bv.functions = []
+    mocker.patch.object(upload_mod.Path, "read_bytes", return_value=b"\x00")
+
+    uploader.upload_binary(bv, {"debug_info": None, "tags": [], "is_private": True, **options})
+
+    return analyses_api.return_value.v3_create_analysis.call_args.kwargs["create_request"]
+
+
+def test_upload_binary_sends_binary_config_for_blob(mocker):
+    request = _create_request(mocker, {"file_format": "blob", "isa": "arm", "platform": "linux"})
+
+    assert request.binary_config.file_format == "blob"
+    assert request.binary_config.isa == "arm"
+    assert request.binary_config.platform == "linux"
+
+
+def test_upload_binary_auto_leaves_binary_config_unset(mocker):
+    request = _create_request(mocker, {"file_format": None, "isa": None, "platform": None})
+
+    assert request.binary_config is None

@@ -48,6 +48,7 @@ class ChooseSource:
                 api_instance = revengai.BinariesApi(api_client)
                 api_response = api_instance.v3_search_binaries(partial_sha256 = sha256, user_files_only = True)
                 results = api_response.results or []
+            results = self.config.filter_supported_models(results)
             if not len(results):
                 raise Exception("Binary not found in RevEng.AI, try processing the binary again.")
             

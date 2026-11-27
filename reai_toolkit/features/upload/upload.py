@@ -79,6 +79,12 @@ class BinaryUploader:
             log_error(f"RevEng.AI | Failed to upload file {file_path}: {str(e)}")
             return False, str(e)
                 
+    @staticmethod
+    def _binary_config(options: dict):
+        """Overrides for auto-detection. None (Auto) leaves a field unset."""
+        fields = {k: options.get(k) for k in ("file_format", "isa", "platform") if options.get(k)}
+        return revengai.BinaryConfig(**fields) if fields else None
+
     def upload_binary(self, bv: BinaryView, options: dict):
         try:
 
@@ -111,7 +117,7 @@ class BinaryUploader:
 
             for func in bv.functions:
                 symbols["function_boundaries"].append({
-                        "mangled_name": func.name,
+                        "mangled_name": func.name or f"sub_{func.start:x}",
                         "start_address": func.start,
                         "end_address": func.start + func.total_bytes,
                         "include_in_analysis": True,
@@ -122,27 +128,23 @@ class BinaryUploader:
 
                 analyses_client = revengai.AnalysesCoreApi(api_client)
 
-                tags = []
-
-                for tag in options["tags"]:
-                    tags.append(revengai.Tag(name=tag))
-
-                analysis_create_request=revengai.AnalysisCreateRequest(
+                create_request=revengai.CreateRequest(
                     filename=basename(bv.file.filename),
                     sha_256_hash=sha_256_hash,
                     debug_hash=debug_info_hash if options["debug_info"] else None,
-                    tags=tags,
-                    analysis_scope=revengai.AnalysisScope.PRIVATE if options["is_private"] else revengai.AnalysisScope.PUBLIC,
-                    symbols=symbols
+                    tags=list(options["tags"]),
+                    analysis_scope="PRIVATE" if options["is_private"] else "PUBLIC",
+                    symbols=symbols,
+                    binary_config=self._binary_config(options),
                 )
 
-                analysis_result = analyses_client.create_analysis(
-                    analysis_create_request=analysis_create_request
-                )
+                analysis_result = analyses_client.v3_create_analysis(
+                    create_request=create_request
+                ).metadata
 
-                log_info(f"RevEng.AI | Analysis started successfully. Analysis ID: {analysis_result.data.analysis_id}, Binary ID: {analysis_result.data.binary_id}")
+                log_info(f"RevEng.AI | Analysis started successfully. Analysis ID: {analysis_result.analysis_id}, Binary ID: {analysis_result.binary_id}")
 
-            PeriodicChecker(self.config).start_checking(bv, analysis_result.data.analysis_id, analysis_result.data.binary_id, self.config.set_current_info)
+            PeriodicChecker(self.config).start_checking(bv, analysis_result.analysis_id, analysis_result.binary_id, self.config.set_current_info)
 
             return True, "Analysis started successfully."
             

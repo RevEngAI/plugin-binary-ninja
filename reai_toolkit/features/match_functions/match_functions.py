@@ -5,6 +5,7 @@ from binaryninja import BinaryView, log_info, log_error
 from libbs.decompilers.binja.interface import BinjaInterface
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from reai_toolkit.utils import MatchFeature, rename_function as rename_function_util, apply_data_types as apply_data_types_util
+from reai_toolkit.utils.core.binary_ninja import list_all_analysis_functions
 import revengai
 import time
 
@@ -51,8 +52,7 @@ class MatchFunctions(MatchFeature):
 
             with self.config.create_api_client() as api_client:
                 functions_core_instance = revengai.FunctionsCoreApi(api_client)
-                analyzed_functions = functions_core_instance.list_analysis_functions(analysis_id=analysis_id)
-                analyzed_functions = analyzed_functions.to_dict()["functions"]
+                analyzed_functions = [f.to_dict() for f in list_all_analysis_functions(functions_core_instance, analysis_id)]
             if self.cancelled.is_set():
                 return False, "Operation cancelled"
 

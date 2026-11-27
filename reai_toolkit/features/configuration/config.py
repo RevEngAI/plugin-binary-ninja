@@ -128,6 +128,12 @@ class Config:
         return json.loads(all_analyses)
     
 
+    def filter_supported_models(self, results):
+        # v3_get_models lists offered base names; analyses may carry a variant suffix.
+        with self.create_api_client() as api_client:
+            models = revengai.ConfigApi(api_client).v3_get_models().models or []
+        return [r for r in results if any(r.model_name == m or r.model_name.startswith(f"{m}-") for m in models)]
+
     def set_current_info(self, binary_id, analysis_id, model_id):
 
         try:
@@ -174,12 +180,13 @@ class Config:
                 with self.create_api_client() as api_client:
                     api_instance = revengai.BinariesApi(api_client)
                     api_response = api_instance.v3_search_binaries(partial_sha256 = self.sha256, user_files_only = True)
-                if not len(api_response.results):
+                results = self.filter_supported_models(api_response.results or [])
+                if not len(results):
                     raise Exception("Binary not found in RevEng.AI, try processing the binary again.")
                 else:
-                    self.binary_id = api_response.results[0].binary_id
-                    self.analysis_id = api_response.results[0].analysis_id
-                    self.model_id = api_response.results[0].model_id
+                    self.binary_id = results[0].binary_id
+                    self.analysis_id = results[0].analysis_id
+                    self.model_id = results[0].model_id
                     bv = AnalysisSyncService(self).sync_analysis_data(analysis_id=self.analysis_id, bv=bv)
                     log_info(f"RevEng.AI | Binary found in RevEng.AI, binary_id: {self.binary_id}")
                     self.set_current_info(self.binary_id, self.analysis_id, self.model_id)

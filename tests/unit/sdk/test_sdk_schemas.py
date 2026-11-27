@@ -26,7 +26,7 @@ API_METHODS = {
     "BinariesApi": ["v3_search_binaries"],
     "CollectionsApi": ["v3_list_collections"],
     "AnalysesCoreApi": [
-        "create_analysis",
+        "v3_create_analysis",
         "upload_file",
         "v3_get_analysis_operation",
         "get_analysis_basic_info_0",
@@ -40,6 +40,7 @@ API_METHODS = {
         "start_functions_matching",
         "get_functions_matching_status",
         "get_functions_matches",
+        "get_function_blocks_0",
     ],
     "IAMUsersApi": ["get_me", "get_me_without_preload_content"],
     "FunctionsRenamingHistoryApi": ["rename_function"],
@@ -52,6 +53,7 @@ API_METHODS = {
         "get_ai_decompilation_inline_comments",
         "regenerate_ai_decompilation_summary",
         "regenerate_ai_decompilation_inline_comments",
+        "v3_get_ai_decompilation_line_attributions",
     ],
 }
 
@@ -137,10 +139,8 @@ def test_get_models_output_has_no_envelope():
     assert "models" in revengai.GetModelsOutputBody.model_fields
 
 
-def test_create_analysis_accepts_request_kwarg():
-    assert "analysis_create_request" in _params(
-        revengai.AnalysesCoreApi.create_analysis
-    )
+def test_v3_create_analysis_accepts_request_kwarg():
+    assert "create_request" in _params(revengai.AnalysesCoreApi.v3_create_analysis)
 
 
 def test_analysis_id_methods_accept_analysis_id():
@@ -151,12 +151,12 @@ def test_analysis_id_methods_accept_analysis_id():
     )
 
 
-def test_list_analysis_functions_accepts_analysis_id():
-    assert "analysis_id" in _params(revengai.FunctionsCoreApi.list_analysis_functions)
+def test_list_analysis_functions_accepts_paging_params():
+    assert {"analysis_id", "offset", "limit"} <= _params(revengai.FunctionsCoreApi.list_analysis_functions)
 
 
 def test_list_analysis_functions_output_has_no_envelope():
-    assert {"functions"} <= set(revengai.ListAnalysisFunctionsOutputBody.model_fields)
+    assert {"functions", "total_count"} <= set(revengai.ListAnalysisFunctionsOutputBody.model_fields)
 
 
 def test_start_functions_matching_accepts_request_kwargs():
@@ -194,13 +194,20 @@ def test_ai_decompilation_methods_accept_function_id():
         "get_ai_decompilation",
         "get_ai_decompilation_summary",
         "get_ai_decompilation_inline_comments",
+        "v3_get_ai_decompilation_line_attributions",
     ):
         assert "function_id" in _params(
             getattr(revengai.FunctionsAIDecompilationApi, method)
         )
 
 
-def test_analysis_create_request_has_plugin_fields():
+def test_line_attributions_have_plugin_fields():
+    assert "function_id" in _params(revengai.FunctionsCoreApi.get_function_blocks_0)
+    assert "basic_blocks" in revengai.DisassemblyOutputBody.model_fields
+    assert "disassembly_line_number_to_ai_decompilation_line_numbers" in revengai.LineAttributionsData.model_fields
+
+
+def test_create_request_has_plugin_fields():
     assert {
         "filename",
         "sha_256_hash",
@@ -208,7 +215,11 @@ def test_analysis_create_request_has_plugin_fields():
         "tags",
         "analysis_scope",
         "symbols",
-    } <= set(revengai.AnalysisCreateRequest.model_fields)
+    } <= set(revengai.CreateRequest.model_fields)
+
+
+def test_create_metadata_has_plugin_fields():
+    assert {"analysis_id", "binary_id"} <= set(revengai.CreateMetadata.model_fields)
 
 
 def test_match_filters_has_plugin_fields():
@@ -219,14 +230,6 @@ def test_match_filters_has_plugin_fields():
 
 def test_rename_input_body_has_plugin_fields():
     assert {"new_name", "new_mangled_name"} <= set(RenameInputBody.model_fields)
-
-
-def test_tag_has_name_field():
-    assert "name" in revengai.Tag.model_fields
-
-
-def test_analysis_scope_has_plugin_members():
-    assert {"PRIVATE", "PUBLIC"} <= set(revengai.AnalysisScope.__members__)
 
 
 def test_upload_file_type_has_plugin_members():
@@ -418,3 +421,9 @@ def test_analysis_data_types_group_has_analysis_id_and_items():
     from revengai.models.analysis_data_types_group import AnalysisDataTypesGroup
 
     assert {"analysis_id", "items"} <= set(AnalysisDataTypesGroup.model_fields)
+
+
+def test_binary_config_has_plugin_fields():
+    assert "binary_config" in revengai.CreateRequest.model_fields
+    assert {"file_format", "isa", "platform"} <= set(revengai.BinaryConfig.model_fields)
+    revengai.BinaryConfig(file_format="blob", isa="arm", platform="linux")

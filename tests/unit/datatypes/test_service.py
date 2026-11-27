@@ -171,3 +171,27 @@ def test_build_signature_data_dedupes_shared_dependency():
     result = dt_mod.build_signature_data(signature, STRUCT_DATA_TYPES)
 
     assert len(result["deps"]) == 1
+
+
+@pytest.mark.parametrize(
+    "definition",
+    [None, {"target_data_type_id": None}, {"target_data_type_id": 99}],
+    ids=["no-definition", "no-target", "target-not-returned"],
+)
+def test_build_signature_data_skips_typedef_with_unresolved_target(definition):
+    data_types = {
+        **PRIMITIVE_DATA_TYPES,
+        "5": {"data_type_id": 5, "kind": "TYPEDEF", "name": "off_t", "definition": definition},
+    }
+    signature = {
+        "function_id": 105,
+        "function_name": "seek",
+        "has_signature": True,
+        "parameters": [{"name": "offset", "ordinal": 0, "data_type_id": 5}],
+        "return_data_type_id": 1,
+    }
+
+    result = dt_mod.build_signature_data(signature, data_types)
+
+    assert result["function"].args[0].type == "off_t"
+    assert result["deps"] == []

@@ -90,8 +90,8 @@ class AIDecompiler:
 
             log_info(f"RevEng.AI | Starting AI decompilation for function at 0x{function.start:x}")
             periodic_checker = AIDecompilerChecker()
-            periodic_checker.start_ai_decompiler_checking(function_id, callback, editor, tab_name, self.config)
             self._current_checker = periodic_checker
+            periodic_checker.start_ai_decompiler_checking(function_id, callback, editor, tab_name, self.config)
 
         except Exception as e:
             log_error(f"RevEng.AI | Error in AI decompiler: {str(e)}")
